@@ -1,0 +1,119 @@
+{
+  "schema": "characterkit.design/1",
+  "layout": {
+    "aspectRatio": 1,
+    "fit": "contain",
+    "inset": 0.025,
+    "alignmentX": 0.5,
+    "alignmentY": 0.5,
+    "face": {
+      "x": 0.1,
+      "y": 0.12,
+      "width": 0.8,
+      "height": 0.76
+    },
+    "eyes": {
+      "x": 0.13,
+      "y": 0.18,
+      "width": 0.74,
+      "height": 0.42
+    },
+    "nose": {
+      "x": 0.44,
+      "y": 0.61,
+      "width": 0.12,
+      "height": 0.06
+    },
+    "mouth": {
+      "x": 0.3,
+      "y": 0.68,
+      "width": 0.4,
+      "height": 0.15
+    },
+    "writing": {
+      "x": 0.78,
+      "y": 0.84,
+      "width": 0.19,
+      "height": 0.11
+    }
+  },
+  "rendering": {
+    "surfaceVisible": true,
+    "mode": "sculpted",
+    "silhouette": "orb",
+    "cornerRadius": 0.32,
+    "eyeStyle": "capsule",
+    "eyeCornerRadius": 0.5,
+    "eyeScaleX": 1.0,
+    "eyeScaleY": 1.0,
+    "eyeSpacing": 1.0,
+    "mouthStyle": "outline",
+    "lineWidth": 0.012,
+    "minimumStrokeWidth": 1.0,
+    "highlight": 0.24,
+    "shadow": 0.16,
+    "compactBelow": 64,
+    "framesPerSecond": 60,
+    "lighting": "radial",
+    "minimumMouthAspect": 0.35
+  },
+  "motion": {
+    "projection": "softSphere",
+    "expressiveness": 1.0,
+    "trailStrength": 0.0,
+    "accentStrength": 0.0,
+    "idleStrength": 0.52
+  },
+  "transition": {
+    "minimumReturnDuration": 0.11,
+    "maximumReturnDuration": 0.46,
+    "neutralHoldDuration": 0.045,
+    "rebound": 0.072
+  },
+  "components": [
+    "eyes",
+    "mouth",
+    "writing",
+    "accessories"
+  ],
+  "accessories": [
+    {
+      "id": "headphones",
+      "label": "Headphones",
+      "glyph": "headphones",
+      "anchor": "face",
+      "layer": "behindFeatures",
+      "centerX": 0.5,
+      "centerY": 0.39,
+      "width": 1.04,
+      "height": 0.83,
+      "angle": 0,
+      "opacity": 1,
+      "color": "accent"
+    }
+  ],
+  "id": "white",
+  "name": "White",
+  "palettes": {
+    "light": {
+      "stage": "#F4F5F6",
+      "surface": "#F7F7F6",
+      "surfaceShade": "#D6D6D2",
+      "feature": "#0B0B0D",
+      "eye": "#0B0B0D",
+      "detail": "#F7F7F6",
+      "accent": "#0B0B0D",
+      "outline": "#B7B7B3"
+    },
+    "dark": {
+      "stage": "#F4F5F6",
+      "surface": "#F7F7F6",
+      "surfaceShade": "#D6D6D2",
+      "feature": "#0B0B0D",
+      "eye": "#0B0B0D",
+      "detail": "#F7F7F6",
+      "accent": "#0B0B0D",
+      "outline": "#B7B7B3"
+    }
+  }
+}
