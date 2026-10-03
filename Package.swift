@@ -5,7 +5,7 @@ let package = Package(
   name: "CharacterKit",
   platforms: [
     .iOS(.v16),
-    .macOS(.v11),
+    .macOS(.v13),
   ],
   products: [
     .library(
