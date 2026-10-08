@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><title>CharacterKit Paw — squish</title><desc>Four toe pads and one central pad. Authored presentation only.</desc><g id="paw-art" transform="translate(-18 140) scale(1.07 0.67)"><path id="paw" d="M113 319 C79 300 64 268 72 237 C78 211 96 196 121 196 C115 157 131 119 162 110 C194 100 219 115 233 142 C244 157 268 157 279 142 C293 115 318 100 350 110 C381 119 397 157 391 196 C416 196 434 211 440 237 C448 268 433 300 399 319 L392 387 C389 417 365 431 336 432 L176 432 C147 431 123 417 120 387 Z" fill="#FFFFFF" stroke="#101010" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
-  <ellipse id="toe-outer-left" cx="132" cy="252" rx="27" ry="34" transform="rotate(-18 132 252)" fill="#EE9A9A" />
-    <ellipse id="toe-inner-left" cx="200" cy="187" rx="29" ry="39" transform="rotate(-8 200 187)" fill="#EE9A9A" />
-    <ellipse id="toe-inner-right" cx="312" cy="187" rx="29" ry="39" transform="rotate(8 312 187)" fill="#EE9A9A" />
-    <ellipse id="toe-outer-right" cx="380" cy="252" rx="27" ry="34" transform="rotate(18 380 252)" fill="#EE9A9A" />
-    <path id="bean" d="M204 290 C212 266 232 252 256 252 C280 252 300 266 308 290 C314 307 338 322 338 342 C338 369 318 382 294 376 C268 369 244 369 218 376 C194 382 174 369 174 342 C174 322 198 307 204 290 Z" fill="#EE9A9A" />
-  </g><g id="decoration"><path d="M63 247 L40 244 M86 215 L66 197 M449 247 L472 244 M426 215 L446 197" fill="none" stroke="#101010" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" /></g></svg>

@@ -35,7 +35,7 @@
       for node in scene.nodes {
         guard let asset = node.image?.asset, seen.insert(asset).inserted else { continue }
         guard CharacterPlatformImageLoader.named(asset) != nil else {
-          throw CharacterImageResolutionError.unavailable(name: asset.name, source: asset.source)
+          throw CharacterImageResolutionError.unavailable(name: asset.name)
         }
       }
       let renderer = ImageRenderer(content: CharacterSceneCanvas(scene: scene))

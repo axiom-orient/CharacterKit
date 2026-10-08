@@ -57,9 +57,6 @@ enum CharacterMotionReference {
   static let blinkHold = 0.028
   static let blinkOpen = 0.090
 
-  static let nearTrailDelay = 0.024
-  static let farTrailDelay = 0.048
-
   static var blinkDuration: Double {
     blinkClose + blinkHold + blinkOpen
   }

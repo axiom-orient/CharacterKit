@@ -18,11 +18,13 @@ public struct CharacterPresentationStatus: Sendable, Equatable {
 /// Semantic truth remains in `CharacterState`. This type owns only transient visual
 /// continuity and independent layer clocks. Large semantic performances return through
 /// neutral; ordinary gaze changes use a short saccade bridge and never reset activity,
-/// emotion, communication or animation time.
+/// emotion, communication or animation time. Agent-progress gaze and voice-level mouth
+/// retargets are presentation-only; inspection continues to expose the newest semantic state.
 public struct CharacterPresentationSession: Sendable, Equatable {
   private enum Timing {
     static let featureEntryDuration = 0.17
     static let mouthExitDuration = 0.062
+    static let voiceLevelRetargetDuration = 0.10
   }
 
   private struct LayerClock: Sendable, Equatable {
@@ -35,7 +37,10 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     }
 
     func elapsed(at time: Double) -> Double {
-      elapsedAtAnchor + max(0, time - anchorTime)
+      let elapsed = elapsedAtAnchor + max(0, time - anchorTime)
+      // Finite caller samples can still overflow after a clock re-anchor. Preserve late
+      // sample semantics and ordinary arithmetic without passing infinity into the sampler.
+      return elapsed.isFinite ? elapsed : .greatestFiniteMagnitude
     }
   }
 
@@ -52,6 +57,20 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     let startedAt: Double
     let duration: Double
     let amplitude: Double
+    let blinkOnAcquisition: Bool
+  }
+
+  private struct VoiceLevelTransition: Sendable, Equatable {
+    let from: Double
+    let to: Double
+    let startedAt: Double
+    let duration: Double
+
+    func value(at time: Double) -> Double {
+      let progress = min(max((time - startedAt) / duration, 0), 1)
+      let eased = progress * progress * (3 - 2 * progress)
+      return from + (to - from) * eased
+    }
   }
 
   private var targetState: CharacterState
@@ -61,6 +80,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
   private var animationClock: LayerClock
   private var bridge: Bridge?
   private var gazeBridge: GazeBridge?
+  private var voiceLevelTransition: VoiceLevelTransition?
 
   public init(state: CharacterState = .idle, at time: Double = 0) {
     precondition(time.isFinite && time >= 0, "time must be finite and non-negative")
@@ -71,22 +91,24 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     animationClock = LayerClock(anchorTime: time)
     bridge = nil
     gazeBridge = nil
+    voiceLevelTransition = nil
   }
 
   /// Accepts the newest semantic state.
   ///
-  /// Returns `true` only for a full neutral handoff. Gaze-only changes are intentionally
-  /// lighter: they preserve all layer clocks and use a crisp micro-saccade bridge.
+  /// Returns `true` only for a full neutral handoff. Gaze-target and agent-progress changes
+  /// bridge the eye layer; voice levels retarget mouth openness. These updates preserve all
+  /// layer clocks and start from the currently presented value if interrupted.
   @discardableResult
   public mutating func update(
     state newState: CharacterState,
     at time: Double,
-    reduceMotion: Bool = false,
-    projection: CharacterProjection = .softSphere,
-    motionProfile: CharacterMotionProfile = .expressive,
-    transitionProfile: CharacterTransitionProfile = .expressive
+    reduceMotion: Bool = false
   ) -> Bool {
     precondition(time.isFinite && time >= 0, "time must be finite and non-negative")
+    let projection = CharacterProjection.softSphere
+    let motionProfile = CharacterMotionProfile.semi
+    let transitionProfile = CharacterTransitionProfile.semi
 
     let oldState = targetState
     let oldIdentity = oldState.performanceIdentity
@@ -134,16 +156,15 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       }
       bridge = nil
       gazeBridge = nil
+      voiceLevelTransition = nil
       return false
     }
 
     if performanceChanged {
-      let current = pose(
-        at: time,
-        reduceMotion: reduceMotion,
-        projection: projection,
-        motionProfile: motionProfile
-      )
+      let current = pose(at: time, reduceMotion: reduceMotion)
+      // The captured pose carries the currently presented level. The new semantic performance
+      // owns its level directly after handoff, even when communication remains voice.
+      voiceLevelTransition = nil
       let neutral = neutralPose(projection: projection, motionProfile: motionProfile)
       let policy = transitionProfile
       let distance = poseDistance(current, neutral)
@@ -186,18 +207,38 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       return true
     }
 
+    let progressGazeChanged: Bool
+    if case .agentWritingProgress(let oldProgress) = oldState.gazeIdentity,
+      case .agentWritingProgress(let newProgress) = newState.gazeIdentity
+    {
+      progressGazeChanged = oldProgress != newProgress
+    } else {
+      progressGazeChanged = false
+    }
     let gazeChanged = oldState.gazeIdentity != newState.gazeIdentity
     let currentPose =
       gazeChanged
-      ? pose(
-        at: time,
-        reduceMotion: reduceMotion,
-        projection: projection,
-        motionProfile: motionProfile
-      )
+      ? pose(at: time, reduceMotion: reduceMotion)
       : nil
 
+    let oldVoiceLevel = oldState.communication.voiceLevelForPresentation
+    let newVoiceLevel = newState.communication.voiceLevelForPresentation
+    let currentVoiceLevel = voiceLevelTransition?.value(at: time) ?? oldVoiceLevel
+
     targetState = newState
+
+    if oldState.communication.presentationIdentity != newState.communication.presentationIdentity {
+      voiceLevelTransition = nil
+    } else if let oldVoiceLevel, let newVoiceLevel, oldVoiceLevel != newVoiceLevel,
+      let currentVoiceLevel
+    {
+      voiceLevelTransition = VoiceLevelTransition(
+        from: currentVoiceLevel,
+        to: newVoiceLevel,
+        startedAt: time,
+        duration: Timing.voiceLevelRetargetDuration
+      )
+    }
 
     if gazeChanged, let currentPose {
       let target = rawPose(
@@ -213,7 +254,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
           from: currentPose,
           startedAt: time,
           duration: duration,
-          amplitude: amplitude
+          amplitude: amplitude,
+          blinkOnAcquisition: !progressGazeChanged
         )
       } else {
         gazeBridge = nil
@@ -225,11 +267,11 @@ public struct CharacterPresentationSession: Sendable, Equatable {
 
   public func pose(
     at time: Double,
-    reduceMotion: Bool = false,
-    projection: CharacterProjection = .softSphere,
-    motionProfile: CharacterMotionProfile = .expressive
+    reduceMotion: Bool = false
   ) -> CharacterPose {
     precondition(time.isFinite && time >= 0, "time must be finite and non-negative")
+    let projection = CharacterProjection.softSphere
+    let motionProfile = CharacterMotionProfile.semi
 
     // The requested sampling policy applies even before the host reconciles its session.
     // This does not mutate phase/clocks; update(reduceMotion:) still owns reconciliation.
@@ -279,7 +321,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
           from: gazeBridge.from,
           amount: amount,
           progress: progress,
-          amplitude: gazeBridge.amplitude
+          amplitude: gazeBridge.amplitude,
+          blinkOnAcquisition: gazeBridge.blinkOnAcquisition
         )
       }
     }
@@ -340,30 +383,6 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     )
   }
 
-  /// Reconciles a caller-owned presentation configuration change without changing
-  /// semantic state or restarting independent layer clocks.
-  ///
-  /// Pose-shaping inputs such as projection and motion profile are presentation inputs
-  /// rather than `CharacterState`. If one changes while a neutral or gaze bridge is active,
-  /// that bridge contains a pose captured under the previous sampling configuration. Keeping
-  /// it would mix two presentation coordinate systems. This method drops only those transient
-  /// bridges and re-anchors the existing clocks at their current elapsed values. A
-  /// transition-profile-only change does not require reconciliation because an existing
-  /// bridge already owns the timing values captured when that bridge was created.
-  public mutating func reconcilePresentationConfigurationChange(at time: Double) {
-    precondition(time.isFinite && time >= 0, "time must be finite and non-negative")
-
-    activityClock = LayerClock(elapsed: activityClock.elapsed(at: time), anchorTime: time)
-    expressionClock = LayerClock(elapsed: expressionClock.elapsed(at: time), anchorTime: time)
-    communicationClock = LayerClock(
-      elapsed: communicationClock.elapsed(at: time),
-      anchorTime: time
-    )
-    animationClock = LayerClock(elapsed: animationClock.elapsed(at: time), anchorTime: time)
-    bridge = nil
-    gazeBridge = nil
-  }
-
   private func isExpiredAnimationCleanup(
     oldState: CharacterState,
     newState: CharacterState,
@@ -387,15 +406,17 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     projection: CharacterProjection,
     motionProfile: CharacterMotionProfile
   ) -> CharacterPose {
-    ReactiveCharacter.pose(
+    CharacterMotion.sample(
       state: targetState,
-      elapsed: activityClock.elapsed(at: time),
+      activityElapsed: activityClock.elapsed(at: time),
       expressionElapsed: expressionClock.elapsed(at: time),
       communicationElapsed: communicationClock.elapsed(at: time),
       animationElapsed: animationClock.elapsed(at: time),
       reduceMotion: reduceMotion,
       projection: projection,
-      motionProfile: motionProfile
+      profile: motionProfile,
+      voiceLevelOverride: reduceMotion ? nil : voiceLevelTransition?.value(at: time),
+      detailMotionStyle: .semi
     )
   }
 
@@ -403,15 +424,16 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     projection: CharacterProjection,
     motionProfile: CharacterMotionProfile
   ) -> CharacterPose {
-    ReactiveCharacter.pose(
+    CharacterMotion.sample(
       state: .idle,
-      elapsed: 0,
+      activityElapsed: 0,
       expressionElapsed: 0,
       communicationElapsed: 0,
       animationElapsed: 0,
       reduceMotion: true,
       projection: projection,
-      motionProfile: motionProfile
+      profile: motionProfile,
+      detailMotionStyle: .semi
     )
   }
 
@@ -464,12 +486,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
         + abs(lhs.mouth.openness - rhs.mouth.openness) * 0.65
         + lhs.mouth.opacity * 0.25
     )
-    let secondary = min(
-      1,
-      lhs.motionEnergy * 0.6
-        + Double(lhs.accents.count) * 0.08
-        + lhs.writingOpacity * 0.18
-    )
+    let secondary = min(1, lhs.motionEnergy * 0.6 + lhs.writingOpacity * 0.18)
     return clamp(max(max(eyes, surface), max(mouth, secondary)), lower: 0, upper: 1)
   }
 
@@ -513,13 +530,14 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     from: CharacterPose,
     amount: Double,
     progress: Double,
-    amplitude: Double
+    amplitude: Double,
+    blinkOnAcquisition: Bool
   ) -> CharacterPose {
     var eyes = blendEyePair(from.eyes, pose.eyes, amount: amount)
 
     // A large change of attention gets a tiny coordinated blink/compression during
     // acquisition. It is deliberately subtle so the gaze direction remains readable.
-    if amplitude > 0.10, progress < 0.42 {
+    if blinkOnAcquisition, amplitude > 0.10, progress < 0.42 {
       let local = progress / 0.42
       let blink = sin(local * .pi) * 0.20
       eyes = CharacterEyePairPose(
@@ -530,10 +548,6 @@ public struct CharacterPresentationSession: Sendable, Equatable {
 
     return CharacterPose(
       eyes: eyes,
-      nearTrail: from.eyes,
-      farTrail: pose.farTrail,
-      nearTrailOpacity: max(pose.nearTrailOpacity, (1 - progress) * 0.18),
-      farTrailOpacity: pose.farTrailOpacity,
       noseOffsetX: mix(from.noseOffsetX, pose.noseOffsetX, amount: amount),
       mouth: pose.mouth,
       surface: pose.surface,
@@ -542,11 +556,10 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       writingProgress: pose.writingProgress,
       writingVisible: pose.writingVisible,
       writingOpacity: pose.writingOpacity,
-      accents: pose.accents,
       motionEnergy: max(pose.motionEnergy, (1 - progress) * 0.45),
       eyeContours: pose.eyeContours,
-      brows: pose.brows,
-      faceDynamics: pose.faceDynamics
+      faceDynamics: pose.faceDynamics,
+      detailMotion: from.detailMotion.blended(to: pose.detailMotion, amount: amount)
     )
   }
 
@@ -572,33 +585,12 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     mouthProgress: Double
   ) -> CharacterPose {
     let fade = 1 - clamp(fadeProgress, lower: 0, upper: 1)
-    let nearTrail = from.nearTrail.map { blendEyePair($0, to.eyes, amount: amount) }
-    let farTrail = from.farTrail.map { blendEyePair($0, to.eyes, amount: amount) }
     let mouthAmount = clamp(mouthProgress, lower: 0, upper: 1)
     let mouthOpacity = mix(from.mouth.opacity, to.mouth.opacity, amount: mouthAmount)
-    let mouthContour = MouthGlyphLibrary.blend(
-      from: from.mouth.contour,
-      to: to.mouth.contour,
-      amount: mouthAmount
-    )
-    // Interior geometry is not topology-compatible across glyphs. Fade it out
-    // before the shared contour reaches neutral, and keep it suppressed while
-    // the handoff is returning. This avoids a stale tooth/tongue set reading as
-    // a detached second mouth during an interrupted transition.
-    let detailReturn = 1 - smoothStep(mouthAmount / 0.64)
-    let detailOpacity =
-      from.mouth.detailOpacity * detailReturn
-      + to.mouth.detailOpacity * smoothStep((mouthAmount - 0.78) / 0.22)
     let writingOpacity = from.writingOpacity * fade
-    let reference = referenceGlyphTransition(
-      from: from.mouth, to: to.mouth, progress: mouthAmount)
 
     return CharacterPose(
       eyes: blendEyePair(from.eyes, to.eyes, amount: amount),
-      nearTrail: nearTrail,
-      farTrail: farTrail,
-      nearTrailOpacity: from.nearTrailOpacity * fade,
-      farTrailOpacity: from.farTrailOpacity * fade,
       noseOffsetX: mix(from.noseOffsetX, to.noseOffsetX, amount: amount),
       mouth: CharacterMouthPose(
         visible: mouthOpacity > 0.002,
@@ -606,21 +598,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
         curvature: mix(from.mouth.curvature, to.mouth.curvature, amount: mouthAmount),
         openness: max(0, mix(from.mouth.openness, to.mouth.openness, amount: mouthAmount)),
         width: max(0.20, mix(from.mouth.width, to.mouth.width, amount: mouthAmount)),
-        skew: mix(from.mouth.skew, to.mouth.skew, amount: mouthAmount),
-        intrinsicAspect: mix(
-          from.mouth.intrinsicAspect,
-          to.mouth.intrinsicAspect,
-          amount: mouthAmount
-        ),
-        detailOpacity: clamp(detailOpacity, lower: 0, upper: 1),
-        referenceGlyphOpacity: reference.opacity,
-        glyph: reference.glyph,
-        interior: mouthAmount >= 0.999 ? to.mouth.interior : from.mouth.interior,
-        contour: mouthContour,
-        // Detail paths are intentionally kept as a single authored set until
-        // the contour has arrived.  Interpolating unrelated teeth/tongue
-        // topology would briefly create a second-looking mouth.
-        details: mouthAmount >= 0.999 ? to.mouth.details : from.mouth.details
+        skew: mix(from.mouth.skew, to.mouth.skew, amount: mouthAmount)
       ),
       surface: CharacterSurfacePose(
         offsetX: mix(from.surface.offsetX, to.surface.offsetX, amount: amount),
@@ -634,21 +612,10 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       writingProgress: from.writingProgress,
       writingVisible: writingOpacity > 0.002,
       writingOpacity: writingOpacity,
-      accents: from.accents.map { accent in
-        CharacterAccentPose(
-          kind: accent.kind,
-          centerX: accent.centerX,
-          centerY: accent.centerY,
-          width: accent.width,
-          height: accent.height,
-          angle: accent.angle,
-          opacity: accent.opacity * fade
-        )
-      },
       motionEnergy: from.motionEnergy * fade,
       eyeContours: from.eyeContours.blended(to: to.eyeContours, amount: amount),
-      brows: from.brows.blended(to: to.brows, amount: amount),
-      faceDynamics: from.faceDynamics.blended(to: to.faceDynamics, amount: amount)
+      faceDynamics: from.faceDynamics.blended(to: to.faceDynamics, amount: amount),
+      detailMotion: from.detailMotion.blended(to: to.detailMotion, amount: amount)
     )
   }
 
@@ -662,19 +629,9 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     if progress >= 1 { return pose }
     let source = neutral.mouth
     let mouth = pose.mouth
-    let blendedContour = MouthGlyphLibrary.blend(
-      from: source.contour,
-      to: mouth.contour,
-      amount: progress
-    )
     let opacity = mouth.opacity * progress
-    let reference = referenceGlyphTransition(from: source, to: mouth, progress: progress)
     return CharacterPose(
       eyes: blendEyePair(neutral.eyes, pose.eyes, amount: progress),
-      nearTrail: pose.nearTrail.map { blendEyePair(neutral.eyes, $0, amount: progress) },
-      farTrail: pose.farTrail.map { blendEyePair(neutral.eyes, $0, amount: progress) },
-      nearTrailOpacity: pose.nearTrailOpacity * progress,
-      farTrailOpacity: pose.farTrailOpacity * progress,
       noseOffsetX: mix(neutral.noseOffsetX, pose.noseOffsetX, amount: progress),
       mouth: CharacterMouthPose(
         visible: opacity > 0.002,
@@ -682,21 +639,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
         curvature: mouth.curvature * progress,
         openness: mouth.openness * progress,
         width: mix(source.width, mouth.width, amount: progress),
-        skew: mouth.skew * progress,
-        intrinsicAspect: mix(
-          source.intrinsicAspect,
-          mouth.intrinsicAspect,
-          amount: progress
-        ),
-        // The target's interior is revealed only after most of its contour
-        // has arrived. The raw pose may also request an early fade-out for a
-        // repeating cycle; multiplying preserves that request.
-        detailOpacity: mouth.detailOpacity * smoothStep((progress - 0.48) / 0.52),
-        referenceGlyphOpacity: reference.opacity,
-        glyph: reference.glyph,
-        interior: mouth.interior,
-        contour: blendedContour,
-        details: progress >= 0.999 ? mouth.details : source.details
+        skew: mouth.skew * progress
       ),
       surface: CharacterSurfacePose(
         offsetX: mix(neutral.surface.offsetX, pose.surface.offsetX, amount: progress),
@@ -710,36 +653,11 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       writingProgress: pose.writingProgress,
       writingVisible: pose.writingVisible,
       writingOpacity: pose.writingOpacity * progress,
-      accents: pose.accents.map { accent in
-        CharacterAccentPose(
-          kind: accent.kind, centerX: accent.centerX, centerY: accent.centerY,
-          width: accent.width, height: accent.height, angle: accent.angle,
-          opacity: accent.opacity * progress)
-      },
       motionEnergy: pose.motionEnergy * progress,
       eyeContours: CharacterEyeContourPair.neutral.blended(to: pose.eyeContours, amount: progress),
-      brows: CharacterBrowPairPose.neutral.blended(to: pose.brows, amount: progress),
-      faceDynamics: neutral.faceDynamics.blended(to: pose.faceDynamics, amount: progress)
+      faceDynamics: neutral.faceDynamics.blended(to: pose.faceDynamics, amount: progress),
+      detailMotion: neutral.detailMotion.blended(to: pose.detailMotion, amount: progress)
     )
-  }
-
-  /// Select a single reference glyph during the crossing; never cross-fade two authored mouths.
-  private func referenceGlyphTransition(
-    from source: CharacterMouthPose, to target: CharacterMouthPose, progress: Double
-  ) -> (opacity: Double, glyph: CharacterMouthGlyph) {
-    let sourceOpacity = source.referenceGlyphOpacity * (1 - smoothStep(progress / 0.24))
-    let targetOpacity = target.referenceGlyphOpacity * smoothStep((progress - 0.76) / 0.24)
-    if progress <= 0.001 {
-      return (source.referenceGlyphOpacity, source.glyph)
-    }
-    if progress >= 0.999 {
-      return (target.referenceGlyphOpacity, target.glyph)
-    }
-    if sourceOpacity > targetOpacity, sourceOpacity > 0.000_001 {
-      return (sourceOpacity, source.glyph)
-    }
-    if targetOpacity > 0.000_001 { return (targetOpacity, target.glyph) }
-    return (0, progress < 0.5 ? source.glyph : target.glyph)
   }
 
   private func blendEyePair(
@@ -813,6 +731,7 @@ enum CharacterGazeIdentity: Sendable, Hashable {
   case automatic
   case focus(CharacterPoint)
   case writing(CharacterPoint)
+  case agentWritingProgress(CharacterProgress)
 }
 
 extension CharacterCommunication {
@@ -823,6 +742,11 @@ extension CharacterCommunication {
     case .listening: .listening
     case .voice: .voice
     }
+  }
+
+  var voiceLevelForPresentation: Double? {
+    guard case .voice(let level) = self else { return nil }
+    return level.value
   }
 }
 
@@ -851,6 +775,9 @@ extension CharacterState {
     case .automatic:
       if case .userWriting(let focus) = activity {
         return .writing(focus)
+      }
+      if case .agentWriting(_, let progress) = activity {
+        return .agentWritingProgress(progress)
       }
       return .automatic
     }

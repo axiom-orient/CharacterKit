@@ -7,7 +7,6 @@ enum CharacterPresentationVariation {
   static let idleSeed: UInt64 = 0x4155_5241
   static let speechSeed: UInt64 = 0x4348_4154
   static let syllableDuration = 0.36
-  static let maximumAccents = 8
   static let idleHoldOffsets = [0.0, 0.22, -0.16, 0.35, -0.10, 0.08]
   static let idleGazeScales = [1.0, 0.66, 0.90, 0.72, 0.82, 0.58]
   static let idleShapes: [[CharacterEyeShape]] = [

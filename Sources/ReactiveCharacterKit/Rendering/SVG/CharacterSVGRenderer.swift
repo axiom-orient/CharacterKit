@@ -15,7 +15,7 @@ public enum CharacterSVGRenderer {
     guard !idPrefix.isEmpty, idPrefix.utf8.count <= 80,
       idPrefix.unicodeScalars.allSatisfy({ allowed.contains($0) })
     else {
-      throw CharacterDesignError.invalid(
+      throw CharacterSceneError.invalidScene(
         path: "idPrefix", reason: "use 1...80 ASCII letters, digits, -, _ or .")
     }
     guard title.count <= 512,
@@ -25,7 +25,7 @@ public enum CharacterSVGRenderer {
           && scalar.value != 0xFFFE && scalar.value != 0xFFFF
       })
     else {
-      throw CharacterDesignError.invalid(
+      throw CharacterSceneError.invalidScene(
         path: "title", reason: "use at most 512 XML characters without controls")
     }
     let prefix = "ck-\(idPrefix)"

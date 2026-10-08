@@ -1,16 +1,14 @@
 import Foundation
 
 extension ReactiveCharacter {
-  /// Produces deterministic renderer-independent presentation data.
+  /// Produces deterministic renderer-independent SEMI presentation data.
   public static func pose(
     state: CharacterState,
     elapsed: Double,
     expressionElapsed: Double? = nil,
     communicationElapsed: Double? = nil,
     animationElapsed: Double? = nil,
-    reduceMotion: Bool = false,
-    projection: CharacterProjection = .softSphere,
-    motionProfile: CharacterMotionProfile = .expressive
+    reduceMotion: Bool = false
   ) -> CharacterPose {
     CharacterMotion.sample(
       state: state,
@@ -19,11 +17,13 @@ extension ReactiveCharacter {
       communicationElapsed: communicationElapsed ?? expressionElapsed ?? elapsed,
       animationElapsed: animationElapsed ?? expressionElapsed ?? elapsed,
       reduceMotion: reduceMotion,
-      projection: projection,
-      profile: motionProfile
+      projection: .softSphere,
+      profile: .semi,
+      detailMotionStyle: .semi
     )
   }
 }
+
 
 enum CharacterMotion {
   private struct EyeSample {
@@ -42,7 +42,9 @@ enum CharacterMotion {
     animationElapsed: Double,
     reduceMotion: Bool,
     projection: CharacterProjection = .softSphere,
-    profile: CharacterMotionProfile = .expressive
+    profile: CharacterMotionProfile = .semi,
+    voiceLevelOverride: Double? = nil,
+    detailMotionStyle: CharacterDetailMotionStyle = .semi
   ) -> CharacterPose {
     let activityTime = reduceMotion ? 0 : validatedTime(activityElapsed)
     let expressionTime = reduceMotion ? 0 : validatedTime(expressionElapsed)
@@ -69,62 +71,52 @@ enum CharacterMotion {
       lower: 0,
       upper: 1
     )
-    let shouldDrawTrail = !reduceMotion && profile.trailStrength > 0 && trailEnergy > 0.10
-    let nearTrail =
-      shouldDrawTrail
-      ? historicalEyePair(
-        state: state,
-        activityElapsed: max(0, activityTime - CharacterMotionReference.nearTrailDelay),
-        expressionElapsed: max(0, expressionTime - CharacterMotionReference.nearTrailDelay),
-        animationElapsed: max(0, animationTime - CharacterMotionReference.nearTrailDelay),
-        projection: projection,
-        profile: profile
-      )
-      : nil
-    let farTrail =
-      shouldDrawTrail
-      ? historicalEyePair(
-        state: state,
-        activityElapsed: max(0, activityTime - CharacterMotionReference.farTrailDelay),
-        expressionElapsed: max(0, expressionTime - CharacterMotionReference.farTrailDelay),
-        animationElapsed: max(0, animationTime - CharacterMotionReference.farTrailDelay),
-        projection: projection,
-        profile: profile
-      )
-      : nil
-
     // Emotions, communication and work are expressed by the face and writing parts.
     // Decorations are an explicit host overlay only, never inferred from semantic state.
     let writingVisible = writingIsVisible(for: state.activity)
     let writingOpacity = writingVisible ? (ownsActivity ? 1.0 : 0.52) : 0
     let faceDynamics = CharacterFaceDynamics.sample(emotion: state.emotion, projection: projection)
+    let surface = composeSurface(
+      activitySurfacePose(
+        activity: state.activity,
+        elapsed: activityTime,
+        reduceMotion: reduceMotion,
+        intensity: profile.expressiveness * (ownsActivity ? 1 : 0.24)
+      ),
+      composeSurface(expression.surface, animation.surface)
+    )
+    let detailMotion = sampleDetailMotion(
+      state: state,
+      visualChannel: eyeSample.visualChannel,
+      time: detailMotionClock(
+        visualChannel: eyeSample.visualChannel,
+        activity: activityTime,
+        expression: expressionTime,
+        communication: communicationTime,
+        animation: animationTime
+      ),
+      trailEnergy: trailEnergy,
+      surface: surface,
+      expression: expression,
+      voiceLevelOverride: voiceLevelOverride,
+      reduceMotion: reduceMotion,
+      profile: profile,
+      detailMotionStyle: detailMotionStyle
+    )
 
     return CharacterPose(
       eyes: eyeSample.eyes,
-      nearTrail: nearTrail,
-      farTrail: farTrail,
-      nearTrailOpacity: trailEnergy * 0.34 * profile.trailStrength,
-      farTrailOpacity: trailEnergy * 0.15 * profile.trailStrength,
       noseOffsetX: frame.gazeX * 0.22,
       mouth: mouthPose(
         requested: state.mouthRequested,
-        emotion: state.emotion,
         communication: state.communication,
         activity: state.activity,
         expression: expression,
-        expressionElapsed: expressionTime,
         elapsed: communicationTime,
-        reduceMotion: reduceMotion
+        reduceMotion: reduceMotion,
+        voiceLevelOverride: voiceLevelOverride
       ),
-      surface: composeSurface(
-        activitySurfacePose(
-          activity: state.activity,
-          elapsed: activityTime,
-          reduceMotion: reduceMotion,
-          intensity: profile.expressiveness * (ownsActivity ? 1 : 0.24)
-        ),
-        composeSurface(expression.surface, animation.surface)
-      ),
+      surface: surface,
       writingPhase: writingPhase(
         for: state.activity,
         elapsed: activityTime,
@@ -138,12 +130,108 @@ enum CharacterMotion {
       writingProgress: writingProgress(for: state.activity),
       writingVisible: writingVisible,
       writingOpacity: writingOpacity,
-      accents: [],
       motionEnergy: trailEnergy,
       eyeContours: expression.eyeContours,
-      brows: expression.brows,
-      faceDynamics: faceDynamics
+      faceDynamics: faceDynamics,
+      detailMotion: detailMotion
     )
+  }
+
+  private static func detailMotionClock(
+    visualChannel: CharacterVisualChannel,
+    activity: Double,
+    expression: Double,
+    communication: Double,
+    animation: Double
+  ) -> Double {
+    switch visualChannel {
+    case .neutral, .activity:
+      activity
+    case .emotion:
+      expression
+    case .communication:
+      communication
+    case .animation:
+      animation
+    }
+  }
+
+  private static func sampleDetailMotion(
+    state: CharacterState,
+    visualChannel: CharacterVisualChannel,
+    time: Double,
+    trailEnergy: Double,
+    surface: CharacterSurfacePose,
+    expression: CharacterExpressionSample,
+    voiceLevelOverride: Double?,
+    reduceMotion: Bool,
+    profile: CharacterMotionProfile,
+    detailMotionStyle: CharacterDetailMotionStyle
+  ) -> CharacterDetailMotion {
+    let isSEMIIdle = detailMotionStyle == .semi
+      && visualChannel == .neutral
+      && state.activity == .idle
+      && state.emotion == nil
+      && state.communication == .silent
+    guard !reduceMotion, profile.expressiveness > 0,
+      visualChannel != .neutral || isSEMIIdle
+    else {
+      return .still
+    }
+
+    let surfaceImpulse = clamp(
+      hypot(surface.offsetX, surface.offsetY) * 5
+        + abs(surface.scaleX - 1) * 2.5
+        + abs(surface.scaleY - 1) * 2.5
+        + abs(surface.angle) * 4,
+      lower: 0,
+      upper: 1
+    )
+    let secondaryEnergy = max(clamp(trailEnergy, lower: 0, upper: 1), surfaceImpulse)
+    // A laugh, nod or curious lean can carry body energy without an impact.
+    // Eyes and detail share the resolved owner, including visual expiry before host cleanup.
+    let activeAnimation = visualChannel == .animation ? state.animation?.animation : nil
+    let impulse: Double = switch activeAnimation {
+    case .bounce, .recoil, .shake: secondaryEnergy
+    default: 0
+    }
+    let expressionAmount = clamp(
+      max(
+        max(abs(expression.mouthCurvature) * 0.70, expression.mouthOpenness * 0.78),
+        abs(expression.mouthSkew) * 0.65),
+      lower: 0,
+      upper: 1
+    )
+    let communicationAmount: Double = switch state.communication {
+    case .silent:
+      0
+    case .chat:
+      0.72
+    case .listening:
+      0.62
+    case .voice(let level):
+      clamp(0.30 + (voiceLevelOverride ?? level.value) * 0.58, lower: 0, upper: 1)
+    }
+    let activityAmount: Double = if isSEMIIdle { 0.20 } else {
+      switch state.activity {
+      case .idle:
+        0.20
+      case .userWriting, .agentWriting:
+        0.48
+      case .agentThinking:
+        0.38
+      case .agentCancelling:
+        0.66
+      case .success, .failure, .cancelled:
+        0.72
+      }
+    }
+    let baseAmount = max(
+      max(expressionAmount, communicationAmount),
+      max(activityAmount, secondaryEnergy)
+    )
+    let amount = clamp(baseAmount * min(profile.expressiveness, 1.5), lower: 0, upper: 1)
+    return CharacterDetailMotion.sample(time: time, impulse: impulse, amount: amount)
   }
 
   static func motionFrame(
@@ -301,26 +389,6 @@ enum CharacterMotion {
       ? state.fallbackVisualChannelExcludingAnimation : state.visualChannel
   }
 
-  private static func historicalEyePair(
-    state: CharacterState,
-    activityElapsed: Double,
-    expressionElapsed: Double,
-    animationElapsed: Double,
-    projection: CharacterProjection,
-    profile: CharacterMotionProfile
-  ) -> CharacterEyePairPose {
-    sampleEyes(
-      state: state,
-      activityElapsed: activityElapsed,
-      expressionElapsed: expressionElapsed,
-      animationElapsed: animationElapsed,
-      reduceMotion: false,
-      projection: projection,
-      profile: profile
-    ).eyes
-  }
-
-  /// Live and historical eyes share the same owner selection and composition order.
   private static func sampleEyes(
     state: CharacterState,
     activityElapsed: Double,
@@ -425,8 +493,7 @@ enum CharacterMotion {
       mouthSkew: sample.mouthSkew,
       surface: .identity,
       trailBoost: 0,
-      eyeContours: sample.eyeContours,
-      brows: sample.brows
+      eyeContours: sample.eyeContours
     )
   }
 
@@ -980,13 +1047,12 @@ enum CharacterMotion {
 
   private static func mouthPose(
     requested: Bool,
-    emotion: CharacterEmotion?,
     communication: CharacterCommunication,
     activity: CharacterActivity,
     expression: CharacterExpressionSample,
-    expressionElapsed: Double,
     elapsed: Double,
-    reduceMotion: Bool
+    reduceMotion: Bool,
+    voiceLevelOverride: Double?
   ) -> CharacterMouthPose {
     let outputWritingVisible = activity.isAgentWriting
     guard requested else {
@@ -996,24 +1062,7 @@ enum CharacterMotion {
         curvature: 0,
         openness: 0,
         width: expression.mouthWidth,
-        skew: 0,
-        intrinsicAspect: MouthGlyphLibrary.intrinsicAspect(
-          for: .baseFlat,
-          openness: 0,
-          width: expression.mouthWidth
-        ),
-        detailOpacity: 0,
-        referenceGlyphOpacity: 0,
-        glyph: .baseFlat,
-        interior: .none,
-        contour: MouthGlyphLibrary.contour(
-          for: .baseFlat,
-          openness: 0,
-          width: expression.mouthWidth,
-          curvature: 0,
-          skew: 0
-        ),
-        details: []
+        skew: 0
       )
     }
 
@@ -1033,73 +1082,22 @@ enum CharacterMotion {
         speechOpen = CharacterPresentationVariation.speechOpenness(elapsed: elapsed)
       }
     case .voice(let level):
-      speechOpen = 0.10 + level.value * 0.78
+      let presentedLevel = clamp(voiceLevelOverride ?? level.value, lower: 0, upper: 1)
+      speechOpen = 0.10 + presentedLevel * 0.78
     }
 
-    let cycle = MouthGlyphLibrary.cycleSample(
-      // A silent agent-writing pose uses the output wave family rather than manufacturing an
-      // emotion. Explicit emotion remains authoritative when it is present.
-      emotion: emotion,
-      expressionElapsed: expressionElapsed,
-      communication: effectiveCommunication,
-      communicationElapsed: elapsed,
-      reduceMotion: reduceMotion
-    )
-    // Use one clamped width for the payload and its contour. Without this,
-    // tiny expression-sampler floating point differences make the exposed
-    // pose width disagree with the stored neutral bridge contour.
     let runtimeWidth = clamp(expression.mouthWidth, lower: 0.25, upper: 1)
     let runtimeSkew = clamp(expression.mouthSkew, lower: -1, upper: 1)
     let runtimeOpenness = max(expression.mouthOpenness, speechOpen)
-    let targetDefinition = MouthGlyphLibrary.definition(
-      for: cycle.glyph,
-      openness: runtimeOpenness,
-      width: runtimeWidth,
-      curvature: expression.mouthCurvature,
-      skew: runtimeSkew
-    )
-    let baseContour = MouthGlyphLibrary.contour(
-      for: .baseFlat,
-      // The bridge source is the neutral flat glyph, not a skewed copy of the
-      // target expression. Keeping its transform neutral guarantees every
-      // repeated target starts from the same base contour.
-      openness: 0,
-      width: runtimeWidth,
-      curvature: 0,
-      skew: 0
-    )
-    let contour = MouthGlyphLibrary.blend(
-      from: baseContour,
-      to: targetDefinition.segments,
-      amount: cycle.targetAmount
-    )
-    let targetAspect = MouthGlyphLibrary.intrinsicAspect(
-      for: cycle.glyph,
-      openness: runtimeOpenness,
-      width: runtimeWidth
-    )
-    let baseAspect = MouthGlyphLibrary.intrinsicAspect(
-      for: .baseFlat,
-      openness: runtimeOpenness,
-      width: runtimeWidth
-    )
 
     return CharacterMouthPose(
       visible: true,
       opacity: 1,
       curvature: expression.mouthCurvature,
-      // Authored expression / host speech own articulation. The optional reference atlas
-      // may bridge between glyphs, but its independent cycle must not close the whole face.
+      // Authored expression and host speech own articulation.
       openness: clamp(runtimeOpenness, lower: 0, upper: 1),
       width: runtimeWidth,
-      skew: runtimeSkew,
-      intrinsicAspect: baseAspect + (targetAspect - baseAspect) * cycle.targetAmount,
-      detailOpacity: cycle.detailOpacity,
-      referenceGlyphOpacity: smoothStep((cycle.targetAmount - 0.90) / 0.10),
-      glyph: cycle.glyph,
-      interior: targetDefinition.interior,
-      contour: contour,
-      details: targetDefinition.details
+      skew: runtimeSkew
     )
   }
 

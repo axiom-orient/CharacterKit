@@ -26,46 +26,6 @@ public struct CharacterSurfacePose: Sendable, Equatable {
   public static let identity = Self()
 }
 
-/// Small temporary visual objects used to dramatize emotion with minimal geometry.
-public enum CharacterAccentKind: Sendable, Equatable {
-  case heart
-  case sparkle
-  case ring
-  case ray
-  case sweatDrop
-  case tearDrop
-  case puff
-}
-
-/// Renderer-independent transient ornament pose.
-public struct CharacterAccentPose: Sendable, Equatable {
-  public let kind: CharacterAccentKind
-  public let centerX: Double
-  public let centerY: Double
-  public let width: Double
-  public let height: Double
-  public let angle: Double
-  public let opacity: Double
-
-  public init(
-    kind: CharacterAccentKind,
-    centerX: Double,
-    centerY: Double,
-    width: Double,
-    height: Double,
-    angle: Double,
-    opacity: Double
-  ) {
-    self.kind = kind
-    self.centerX = centerX
-    self.centerY = centerY
-    self.width = width
-    self.height = height
-    self.angle = angle
-    self.opacity = opacity
-  }
-}
-
 public struct CharacterEyePose: Sendable, Equatable {
   public let centerX: Double
   public let centerY: Double
@@ -107,26 +67,12 @@ public struct CharacterMouthPose: Sendable, Equatable {
   public let openness: Double
   public let width: Double
   public let skew: Double
-  /// Reference-glyph metadata retained for articulation and source coverage.
-  /// Built-in face geometry consumes the numeric pose above, never a bitmap crossfade.
-  let intrinsicAspect: Double
-  let detailOpacity: Double
-  let referenceGlyphOpacity: Double
-
-  let glyph: CharacterMouthGlyph
-  let interior: CharacterMouthInterior
-  let contour: [MouthCubicSegment]
-  let details: [MouthDetailPath]
 }
 
 /// Renderer-independent presentation output.
 /// Consumers can use this with the built-in SwiftUI view or a custom renderer.
 public struct CharacterPose: Sendable, Equatable {
   public let eyes: CharacterEyePairPose
-  public let nearTrail: CharacterEyePairPose?
-  public let farTrail: CharacterEyePairPose?
-  public let nearTrailOpacity: Double
-  public let farTrailOpacity: Double
   public let noseOffsetX: Double
   public let mouth: CharacterMouthPose
   public let surface: CharacterSurfacePose
@@ -140,12 +86,11 @@ public struct CharacterPose: Sendable, Equatable {
   public let writingProgress: Double?
   public let writingVisible: Bool
   public let writingOpacity: Double
-  public let accents: [CharacterAccentPose]
   public let motionEnergy: Double
   /// Internal built-in contour payload. Public eye/pose fields remain unchanged.
   var eyeContours: CharacterEyeContourPair = .neutral
-  /// Internal eyebrow payload for face models that render brows.
-  var brows: CharacterBrowPairPose = .neutral
   /// Renderer-neutral lower-face coupling resolved from the final eyes.
   var faceDynamics: CharacterFaceDynamics = .neutral
+  /// Bounded sampled channels for renderer-owned secondary detail motion.
+  var detailMotion: CharacterDetailMotion = .still
 }

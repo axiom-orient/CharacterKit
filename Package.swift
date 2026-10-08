@@ -26,9 +26,6 @@ let package = Package(
     .testTarget(
       name: "ReactiveCharacterKitTests",
       dependencies: ["ReactiveCharacterKit"],
-      resources: [
-        .process("Resources")
-      ],
       swiftSettings: [
         .swiftLanguageMode(.v6)
       ]

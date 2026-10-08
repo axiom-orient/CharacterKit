@@ -8,6 +8,8 @@ public enum CharacterPresentationDirective: Sendable, Equatable {
 
 /// Semantic transition evidence with a presentation handoff projection.
 /// Reducer disposition is not evidence of external effect completion.
+/// `.unchanged` means no external neutral/gaze handoff is needed; continuous voice-level
+/// retargeting remains owned by `CharacterPresentationSession`.
 public struct CharacterActionReceipt: Sendable, Equatable {
   public let event: CharacterEvent
   public let stateBefore: CharacterState
@@ -21,9 +23,9 @@ extension ReactiveCharacter {
   /// Runs the canonical reducer, then projects the transition's visual handoff.
   public static func act(
     state: CharacterState,
-    event: CharacterEvent,
-    transitionProfile: CharacterTransitionProfile = .expressive
+    event: CharacterEvent
   ) -> CharacterActionReceipt {
+    let transitionProfile = CharacterTransitionProfile.semi
     let transition = reduce(state: state, event: event)
     let presentation: CharacterPresentationDirective
     if transition.disposition == .accepted,

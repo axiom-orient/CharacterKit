@@ -13,63 +13,12 @@ enum CharacterExpression {
     emotion: CharacterEmotion?, elapsed: Double, reduceMotion: Bool,
     profile: CharacterMotionProfile
   ) -> CharacterExpressionSample {
-    let dynamics = profile.emotionMotion.dynamics(for: emotion)
     var sample = baseSample(
-      emotion: emotion, elapsed: CharacterPeriodicArithmetic.scaledTime(elapsed, rate: dynamics.tempo),
-      reduceMotion: reduceMotion, profile: profile)
-    if !reduceMotion, let emotion, profile.emotionMotion != .authored {
-      sample = sample.scalingMotion(
-        around: reducedSample(emotion: emotion, profile: profile), by: dynamics.amplitude)
-    }
+      emotion: emotion, elapsed: elapsed, reduceMotion: reduceMotion, profile: profile)
     sample.eyeContours = CharacterEyeContourPair.neutral.blended(
       to: eyeContours(for: emotion),
       amount: min(1, profile.expressiveness))
-    sample.brows = CharacterBrowPairPose.neutral.blended(
-      to: brows(for: emotion),
-      amount: min(1, profile.expressiveness))
     return sample
-  }
-
-  /// One eyebrow-expression owner for renderers that opt into eyebrows.
-  /// Existing minimal/cat renderers ignore this channel, so their output contract is unchanged.
-  private static func brows(for emotion: CharacterEmotion?) -> CharacterBrowPairPose {
-    func pair(
-      _ left: CharacterBrowPose,
-      _ right: CharacterBrowPose? = nil
-    ) -> CharacterBrowPairPose {
-      .init(left: left, right: right ?? left)
-    }
-    func brow(_ angle: Double = 0, _ lift: Double = 0, _ bend: Double = 0) -> CharacterBrowPose {
-      .init(angle: angle, lift: lift, bend: bend)
-    }
-    switch emotion {
-    case nil:
-      return .neutral
-    case .joy:
-      return pair(brow(-0.05, 0.18, 0.28), brow(0.05, 0.18, 0.28))
-    case .affection:
-      return pair(brow(-0.03, 0.24, 0.38), brow(0.03, 0.24, 0.38))
-    case .gratitude:
-      return pair(brow(-0.08, 0.08, 0.25), brow(0.08, 0.08, 0.25))
-    case .interest:
-      return pair(brow(-0.04, 0.42, 0.15), brow(0.01, 0.10, 0.05))
-    case .surprise:
-      return pair(brow(0, 0.72, 0.42))
-    case .calmTrust:
-      return pair(brow(-0.02, 0.04, 0.18), brow(0.02, 0.04, 0.18))
-    case .sadness:
-      return pair(brow(-0.22, 0.16, 0.12), brow(0.22, 0.16, 0.12))
-    case .anxietyFear:
-      return pair(brow(-0.18, 0.54, 0.10), brow(0.18, 0.48, 0.10))
-    case .angerIrritation:
-      return pair(brow(0.28, -0.06, -0.08), brow(-0.28, -0.06, -0.08))
-    case .disgustContempt:
-      return pair(brow(0.20, 0.26, -0.12), brow(-0.04, -0.08, 0.02))
-    case .shameGuilt:
-      return pair(brow(-0.12, -0.10, 0.06), brow(0.10, -0.04, 0.06))
-    case .fatigueBurden:
-      return pair(brow(0.02, -0.28, -0.18), brow(-0.02, -0.24, -0.18))
-    }
   }
 
   /// One emotion-to-silhouette owner for every renderer and motion profile.
