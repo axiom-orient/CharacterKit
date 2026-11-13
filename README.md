@@ -97,11 +97,11 @@ styles. The host can replace the theme without replacing its semantic state. For
 pass `.semi` explicitly; the default `ReactiveCharacterView(state:)` uses Black.
 
 For the Norwegian Forest Cat's twelve authored emotion animations, use the bundled
-GIF view. Each clip plays once, then holds one shared neutral image:
+GIF view. It consumes the same host-owned state as the procedural renderer:
 
 ```swift
 ReactiveCharacterGIFView(
-  emotion: state.emotion,
+  state: state,
   playbackTrigger: expressionSequence,
   accessibilityLabel: "숲냥이",
   accessibilityValue: localizedStatus
@@ -112,8 +112,11 @@ ReactiveCharacterGIFView(
 `expressionSequence` is a host-owned integer; increment it to replay the same emotion.
 Changing emotion starts a new clip through the shared neutral pose. Reduce Motion
 shows a still expression for the clip's duration and then returns to neutral.
-This view presents emotions. Use `ReactiveCharacterView` for live gaze, speech
-articulation and action events; it remains the renderer for basic and human characters.
+Speech levels articulate the mouth, attention steers the irises, and action events
+use the shared pose session. These live channels continue after an emotion returns
+to neutral; ordinary voice or gaze updates never restart the GIF. Listening input
+does not articulate the mouth. The `emotion:` initializer remains available for
+emotion-only callers. `ReactiveCharacterView` remains the renderer for basic and human characters.
 See [GIF asset preparation](Tools/Norwegian/README.md) for the source and build contract.
 
 The older Norwegian reference coats retain their authored eye textures and use restrained

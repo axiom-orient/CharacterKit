@@ -55,16 +55,27 @@ The session keeps layer clocks across parameter-only updates. Voice amplitude re
 
 ## Authored emotion clips
 
-The separate `ReactiveCharacterGIFView` is a narrow emotion-only presentation surface.
-It consumes a nullable emotion and an explicit replay counter rather than accepting
-the entire semantic state while ignoring unsupported channels. `CharacterGIFSet` owns
-validated resources and a bounded current-clip decode cache. `CharacterGIFPlayback`
-owns only the one-shot presentation clock and neutral handoff. Both use the shared
-monotonic presentation-time provider. After completion the view directly renders the
-neutral PNG and stops scheduling frames. The host's semantic emotion is never reset.
-Speech, attention and action events continue through the existing procedural surface.
-The authoring tool and resource tests enforce a common canvas and exact neutral frame
-pixels across all twelve files; generated variants are not selected by filename alone.
+`ReactiveCharacterGIFView(state:)` composes authored emotion clips and live input.
+The existing reducer remains the only semantic state writer. `CharacterGIFPresentation`
+coordinates `CharacterGIFPlayback` and the existing `CharacterPresentationSession`
+using one monotonic time provider. Its live pose projection omits emotion geometry
+because the authored GIF owns that geometry. Communication, attention, activity and
+action clocks remain intact. Voice/gaze updates do not restart the authored clip;
+a finished clip returns to neutral while ongoing live input continues.
+
+`CharacterGIFRig` performs bounded texture articulation: it tracks the green iris and
+pink nose landmarks in each frame, warps only the eye interiors for gaze, and registers
+mouth/closed-eye patches from the existing joy and calm-trust clips. Mouth activation
+crossfades over 120 ms; the shared pose session smooths amplitude changes. Listening
+is silent. Whole-character action transforms reuse the shared pose. The host still
+executes animation completion effects and supplies observed lifecycle events.
+
+`CharacterGIFSet` holds immutable compressed sources. Each view lazily retains its
+own rig and one-clip frame cache, so several characters do not evict one another's
+frames. No extra raster assets are required. Reduce Motion uses a static authored
+expression, suppresses action travel and ambient motion, and still responds to explicit
+input and completion deadlines. Inactive scenes pause rendering. Resource tests retain
+the common canvas and exact neutral boundary contract for all twelve files.
 
 ## SEMI within the shared pipeline
 

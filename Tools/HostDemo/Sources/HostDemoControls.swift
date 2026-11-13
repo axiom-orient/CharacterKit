@@ -37,21 +37,41 @@ struct HostDemoControls: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 12) {
         appearanceControls
-        if appearance == .norwegianGIF {
-          Text("Emotion GIFs play once and return to neutral. Choose a procedural character for live speech, gaze and action events.")
-            .font(.callout)
-            .foregroundStyle(.secondary)
-        } else {
-          communicationControls
-          taskControls
-          animationControls
-        }
+        gazeControls
+        communicationControls
+        taskControls
+        animationControls
         motionControls
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.trailing, 4)
     }
     .accessibilityIdentifier("hostControls")
+  }
+
+  private var gazeControls: some View {
+    GroupBox("Attention events") {
+      HStack {
+        ForEach(["Left", "Up", "Center", "Down", "Right"], id: \.self) { label in
+          Button(label) {
+            let point: (Double, Double) = switch label {
+            case "Left": (0, 0.5)
+            case "Right": (1, 0.5)
+            case "Up": (0.5, 0)
+            case "Down": (0.5, 1)
+            default: (0.5, 0.5)
+            }
+            if let focus = try? CharacterPoint(validatingX: point.0, y: point.1) {
+              onSend(.attentionFocused(focus), "Host gaze")
+            }
+          }
+          .accessibilityIdentifier("gaze\(label)Button")
+        }
+        Button("Release") { onSend(.attentionReleased, "Host gaze") }
+          .accessibilityIdentifier("gazeReleaseButton")
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
   }
 
   private var appearanceControls: some View {

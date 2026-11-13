@@ -11,8 +11,8 @@
     case budgetExceeded
   }
 
-  /// A compact, complete set of one-shot emotion GIFs and one shared neutral image.
-  /// The host creates and retains this value; it does not own semantic state.
+  /// Immutable compressed sources and a shared neutral image. View-owned caches
+  /// retain decoded frames; this resource boundary never owns semantic state.
   @MainActor
   final class CharacterGIFSet {
     static let norwegianForest: Result<CharacterGIFSet, Error> = Result {
@@ -34,8 +34,6 @@
 
     let neutral: CGImage
     private let clips: [CharacterEmotion: Clip]
-    private var cachedEmotion: CharacterEmotion?
-    private var cachedFrames: [Int: CGImage] = [:]
 
     init(neutralData: Data, emotionGIFs: [CharacterEmotion: Data]) throws {
       guard neutralData.count <= 8_388_608,
@@ -93,12 +91,9 @@
     func duration(for emotion: CharacterEmotion) -> Double { clips[emotion]?.duration ?? 0 }
 
     /// Resolves only the current clip, keeping decoded-frame memory bounded.
-    func image(for emotion: CharacterEmotion, elapsed: Double, reduceMotion: Bool) throws -> CGImage? {
+    func image(for emotion: CharacterEmotion, elapsed: Double, reduceMotion: Bool,
+      cache: CharacterGIFFrameCache? = nil) throws -> CGImage? {
       guard let clip = clips[emotion], elapsed >= 0, elapsed < clip.duration else { return nil }
-      if cachedEmotion != emotion {
-        cachedEmotion = emotion
-        cachedFrames.removeAll(keepingCapacity: true)
-      }
       let index: Int
       if reduceMotion {
         index = clip.durations.count / 2
@@ -111,13 +106,32 @@
         }
         index = selected
       }
-      if let cached = cachedFrames[index] { return cached }
+      if let cached = cache?.image(emotion: emotion, index: index) { return cached }
       let options = [kCGImageSourceShouldCache: false] as CFDictionary
       guard let frame = CGImageSourceCreateImageAtIndex(clip.source, index, options) else {
         throw CharacterGIFSetError.frameUnavailable(emotion, index)
       }
-      cachedFrames[index] = frame
+      cache?.insert(frame, emotion: emotion, index: index)
       return frame
+    }
+  }
+
+  /// A view-owned decode cache: independent characters never evict each other's frames.
+  @MainActor
+  final class CharacterGIFFrameCache {
+    private var emotion: CharacterEmotion?
+    private var frames: [Int: CGImage] = [:]
+
+    func image(emotion: CharacterEmotion, index: Int) -> CGImage? {
+      self.emotion == emotion ? frames[index] : nil
+    }
+
+    func insert(_ image: CGImage, emotion: CharacterEmotion, index: Int) {
+      if self.emotion != emotion {
+        frames.removeAll(keepingCapacity: true)
+        self.emotion = emotion
+      }
+      frames[index] = image
     }
   }
 #endif

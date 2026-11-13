@@ -16,11 +16,11 @@ This working tree is a release candidate under development. The existing `1.0.0`
 
 ### Character and runtime
 
-- Add `ReactiveCharacterGIFView(emotion:playbackTrigger:accessibilityLabel:accessibilityValue:)`
-  with twelve bundled Norwegian Forest Cat emotion clips. Each plays once and returns
-  to identical neutral pixels; interruptions pass through neutral and repeated emotions
-  can be explicitly replayed. Reduce Motion uses a still expression. Live gaze, speech
-  and action events remain the responsibility of `ReactiveCharacterView`.
+- Add `ReactiveCharacterGIFView(state:playbackTrigger:accessibilityLabel:accessibilityValue:)`
+  with twelve bundled Norwegian emotion clips plus live speech, gaze, blink and action
+  composition. Clips play once and return to shared neutral pixels while live input
+  continues. Voice/gaze updates preserve emotion time. Texture articulation reuses
+  existing authored frames and adds no image files. The emotion-only initializer remains.
 - Resolve secondary motion through the same active visual owner as the eyes after a
   one-shot expires, including when the host sends its completion event late.
 - Correct the reference Norwegian cat's mouth curvature so sad corners fall and happy
