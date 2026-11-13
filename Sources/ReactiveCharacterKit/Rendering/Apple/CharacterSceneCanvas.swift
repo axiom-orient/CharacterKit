@@ -47,10 +47,12 @@
     ) {
       let resolvedLayout = design?.layout ?? layout
       let overlaysEnabled = design?.components.contains(.accessories) ?? (layout != nil)
-      var nodesByLayer: [Int: [CharacterSceneNode]] = [:]
-      for node in scene.nodes { nodesByLayer[node.layer.rawValue, default: []].append(node) }
+      // SceneCompiler owns stable painter order. Walk it once; overlays enter at stage ends.
+      var nodeIndex = scene.nodes.startIndex
       for stage in CharacterSceneLayer.allCases {
-        for node in nodesByLayer[stage.rawValue] ?? [] {
+        while nodeIndex < scene.nodes.endIndex, scene.nodes[nodeIndex].layer == stage {
+          let node = scene.nodes[nodeIndex]
+          nodeIndex += 1
           var part = context
           part.concatenate(node.transform.cgTransform)
           for clip in node.clips { part.clip(to: path(clip)) }

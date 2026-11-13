@@ -1,0 +1,54 @@
+name: SDK validation
+
+'on':
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apple:
+    name: Apple SDK / ${{ matrix.xcode }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - xcode: '16.0 / minimum Swift 6'
+            developer_dir: /Applications/Xcode_16.0.app/Contents/Developer
+          - xcode: '26.3'
+            developer_dir: /Applications/Xcode_26.3.app/Contents/Developer
+    env:
+      DEVELOPER_DIR: ${{ matrix.developer_dir }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Record toolchain
+        run: |
+          xcrun xcodebuild -version
+          xcrun swift --version
+      - name: macOS tests including native PNG rendering
+        run: xcrun swift test --jobs 4
+      - name: Release library
+        run: xcrun swift build -c release --jobs 4
+      - name: iOS 16 Simulator library
+        run: |
+          CHARACTERKIT_SIM_SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+          CHARACTERKIT_SIM_ARCH="$(uname -m)"
+          xcrun swift build --jobs 4 --scratch-path .build/ios-ci \
+            --triple "${CHARACTERKIT_SIM_ARCH}-apple-ios16.0-simulator" \
+            --sdk "$CHARACTERKIT_SIM_SDK"
+      - name: Public consumer
+        run: |
+          xcrun swift build --package-path Tools/Preview --jobs 4
+          xcrun swift build --package-path Tools/HostDemo --jobs 4

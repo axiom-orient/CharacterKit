@@ -18,11 +18,13 @@ public struct CharacterPresentationStatus: Sendable, Equatable {
 /// Semantic truth remains in `CharacterState`. This type owns only transient visual
 /// continuity and independent layer clocks. Large semantic performances return through
 /// neutral; ordinary gaze changes use a short saccade bridge and never reset activity,
-/// emotion, communication or animation time.
+/// emotion, communication or animation time. Agent-progress gaze and voice-level mouth
+/// retargets are presentation-only; inspection continues to expose the newest semantic state.
 public struct CharacterPresentationSession: Sendable, Equatable {
   private enum Timing {
     static let featureEntryDuration = 0.17
     static let mouthExitDuration = 0.062
+    static let voiceLevelRetargetDuration = 0.10
   }
 
   private struct LayerClock: Sendable, Equatable {
@@ -35,7 +37,10 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     }
 
     func elapsed(at time: Double) -> Double {
-      elapsedAtAnchor + max(0, time - anchorTime)
+      let elapsed = elapsedAtAnchor + max(0, time - anchorTime)
+      // Finite caller samples can still overflow after a clock re-anchor. Preserve late
+      // sample semantics and ordinary arithmetic without passing infinity into the sampler.
+      return elapsed.isFinite ? elapsed : .greatestFiniteMagnitude
     }
   }
 
@@ -52,6 +57,20 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     let startedAt: Double
     let duration: Double
     let amplitude: Double
+    let blinkOnAcquisition: Bool
+  }
+
+  private struct VoiceLevelTransition: Sendable, Equatable {
+    let from: Double
+    let to: Double
+    let startedAt: Double
+    let duration: Double
+
+    func value(at time: Double) -> Double {
+      let progress = min(max((time - startedAt) / duration, 0), 1)
+      let eased = progress * progress * (3 - 2 * progress)
+      return from + (to - from) * eased
+    }
   }
 
   private var targetState: CharacterState
@@ -61,8 +80,28 @@ public struct CharacterPresentationSession: Sendable, Equatable {
   private var animationClock: LayerClock
   private var bridge: Bridge?
   private var gazeBridge: GazeBridge?
+  private var voiceLevelTransition: VoiceLevelTransition?
+  private var detailMotionStyle: CharacterDetailMotionStyle
 
   public init(state: CharacterState = .idle, at time: Double = 0) {
+    self.init(state: state, at: time, detailMotionStyle: .standard)
+  }
+
+  /// Creates a presentation session with secondary-detail behavior selected by its art direction.
+  /// Semantic state and all layer clocks retain the same ownership and sampling rules.
+  public init(
+    state: CharacterState = .idle,
+    at time: Double = 0,
+    artDirection: CharacterArtDirection
+  ) {
+    self.init(state: state, at: time, detailMotionStyle: artDirection.detailMotionStyle)
+  }
+
+  init(
+    state: CharacterState,
+    at time: Double,
+    detailMotionStyle: CharacterDetailMotionStyle
+  ) {
     precondition(time.isFinite && time >= 0, "time must be finite and non-negative")
     targetState = state
     activityClock = LayerClock(anchorTime: time)
@@ -71,12 +110,15 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     animationClock = LayerClock(anchorTime: time)
     bridge = nil
     gazeBridge = nil
+    voiceLevelTransition = nil
+    self.detailMotionStyle = detailMotionStyle
   }
 
   /// Accepts the newest semantic state.
   ///
-  /// Returns `true` only for a full neutral handoff. Gaze-only changes are intentionally
-  /// lighter: they preserve all layer clocks and use a crisp micro-saccade bridge.
+  /// Returns `true` only for a full neutral handoff. Gaze-target and agent-progress changes
+  /// bridge the eye layer; voice levels retarget mouth openness. These updates preserve all
+  /// layer clocks and start from the currently presented value if interrupted.
   @discardableResult
   public mutating func update(
     state newState: CharacterState,
@@ -134,6 +176,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       }
       bridge = nil
       gazeBridge = nil
+      voiceLevelTransition = nil
       return false
     }
 
@@ -144,6 +187,9 @@ public struct CharacterPresentationSession: Sendable, Equatable {
         projection: projection,
         motionProfile: motionProfile
       )
+      // The captured pose carries the currently presented level. The new semantic performance
+      // owns its level directly after handoff, even when communication remains voice.
+      voiceLevelTransition = nil
       let neutral = neutralPose(projection: projection, motionProfile: motionProfile)
       let policy = transitionProfile
       let distance = poseDistance(current, neutral)
@@ -186,6 +232,14 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       return true
     }
 
+    let progressGazeChanged: Bool
+    if case .agentWritingProgress(let oldProgress) = oldState.gazeIdentity,
+      case .agentWritingProgress(let newProgress) = newState.gazeIdentity
+    {
+      progressGazeChanged = oldProgress != newProgress
+    } else {
+      progressGazeChanged = false
+    }
     let gazeChanged = oldState.gazeIdentity != newState.gazeIdentity
     let currentPose =
       gazeChanged
@@ -197,7 +251,24 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       )
       : nil
 
+    let oldVoiceLevel = oldState.communication.voiceLevelForPresentation
+    let newVoiceLevel = newState.communication.voiceLevelForPresentation
+    let currentVoiceLevel = voiceLevelTransition?.value(at: time) ?? oldVoiceLevel
+
     targetState = newState
+
+    if oldState.communication.presentationIdentity != newState.communication.presentationIdentity {
+      voiceLevelTransition = nil
+    } else if let oldVoiceLevel, let newVoiceLevel, oldVoiceLevel != newVoiceLevel,
+      let currentVoiceLevel
+    {
+      voiceLevelTransition = VoiceLevelTransition(
+        from: currentVoiceLevel,
+        to: newVoiceLevel,
+        startedAt: time,
+        duration: Timing.voiceLevelRetargetDuration
+      )
+    }
 
     if gazeChanged, let currentPose {
       let target = rawPose(
@@ -213,7 +284,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
           from: currentPose,
           startedAt: time,
           duration: duration,
-          amplitude: amplitude
+          amplitude: amplitude,
+          blinkOnAcquisition: !progressGazeChanged
         )
       } else {
         gazeBridge = nil
@@ -279,7 +351,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
           from: gazeBridge.from,
           amount: amount,
           progress: progress,
-          amplitude: gazeBridge.amplitude
+          amplitude: gazeBridge.amplitude,
+          blinkOnAcquisition: gazeBridge.blinkOnAcquisition
         )
       }
     }
@@ -351,6 +424,22 @@ public struct CharacterPresentationSession: Sendable, Equatable {
   /// transition-profile-only change does not require reconciliation because an existing
   /// bridge already owns the timing values captured when that bridge was created.
   public mutating func reconcilePresentationConfigurationChange(at time: Double) {
+    reconcilePresentationConfigurationChange(at: time, detailMotionStyle: detailMotionStyle)
+  }
+
+  /// Reconciles pose configuration after the caller replaces its art direction.
+  /// Existing semantic state and independent sample clocks are preserved.
+  public mutating func reconcilePresentationConfigurationChange(
+    at time: Double,
+    artDirection: CharacterArtDirection
+  ) {
+    reconcilePresentationConfigurationChange(at: time, detailMotionStyle: artDirection.detailMotionStyle)
+  }
+
+  mutating func reconcilePresentationConfigurationChange(
+    at time: Double,
+    detailMotionStyle: CharacterDetailMotionStyle
+  ) {
     precondition(time.isFinite && time >= 0, "time must be finite and non-negative")
 
     activityClock = LayerClock(elapsed: activityClock.elapsed(at: time), anchorTime: time)
@@ -362,6 +451,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     animationClock = LayerClock(elapsed: animationClock.elapsed(at: time), anchorTime: time)
     bridge = nil
     gazeBridge = nil
+    self.detailMotionStyle = detailMotionStyle
   }
 
   private func isExpiredAnimationCleanup(
@@ -387,15 +477,17 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     projection: CharacterProjection,
     motionProfile: CharacterMotionProfile
   ) -> CharacterPose {
-    ReactiveCharacter.pose(
+    CharacterMotion.sample(
       state: targetState,
-      elapsed: activityClock.elapsed(at: time),
+      activityElapsed: activityClock.elapsed(at: time),
       expressionElapsed: expressionClock.elapsed(at: time),
       communicationElapsed: communicationClock.elapsed(at: time),
       animationElapsed: animationClock.elapsed(at: time),
       reduceMotion: reduceMotion,
       projection: projection,
-      motionProfile: motionProfile
+      profile: motionProfile,
+      voiceLevelOverride: reduceMotion ? nil : voiceLevelTransition?.value(at: time),
+      detailMotionStyle: detailMotionStyle
     )
   }
 
@@ -513,13 +605,14 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     from: CharacterPose,
     amount: Double,
     progress: Double,
-    amplitude: Double
+    amplitude: Double,
+    blinkOnAcquisition: Bool
   ) -> CharacterPose {
     var eyes = blendEyePair(from.eyes, pose.eyes, amount: amount)
 
     // A large change of attention gets a tiny coordinated blink/compression during
     // acquisition. It is deliberately subtle so the gaze direction remains readable.
-    if amplitude > 0.10, progress < 0.42 {
+    if blinkOnAcquisition, amplitude > 0.10, progress < 0.42 {
       let local = progress / 0.42
       let blink = sin(local * .pi) * 0.20
       eyes = CharacterEyePairPose(
@@ -546,7 +639,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       motionEnergy: max(pose.motionEnergy, (1 - progress) * 0.45),
       eyeContours: pose.eyeContours,
       brows: pose.brows,
-      faceDynamics: pose.faceDynamics
+      faceDynamics: pose.faceDynamics,
+      detailMotion: from.detailMotion.blended(to: pose.detailMotion, amount: amount)
     )
   }
 
@@ -648,7 +742,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       motionEnergy: from.motionEnergy * fade,
       eyeContours: from.eyeContours.blended(to: to.eyeContours, amount: amount),
       brows: from.brows.blended(to: to.brows, amount: amount),
-      faceDynamics: from.faceDynamics.blended(to: to.faceDynamics, amount: amount)
+      faceDynamics: from.faceDynamics.blended(to: to.faceDynamics, amount: amount),
+      detailMotion: from.detailMotion.blended(to: to.detailMotion, amount: amount)
     )
   }
 
@@ -719,7 +814,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       motionEnergy: pose.motionEnergy * progress,
       eyeContours: CharacterEyeContourPair.neutral.blended(to: pose.eyeContours, amount: progress),
       brows: CharacterBrowPairPose.neutral.blended(to: pose.brows, amount: progress),
-      faceDynamics: neutral.faceDynamics.blended(to: pose.faceDynamics, amount: progress)
+      faceDynamics: neutral.faceDynamics.blended(to: pose.faceDynamics, amount: progress),
+      detailMotion: neutral.detailMotion.blended(to: pose.detailMotion, amount: progress)
     )
   }
 
@@ -813,6 +909,7 @@ enum CharacterGazeIdentity: Sendable, Hashable {
   case automatic
   case focus(CharacterPoint)
   case writing(CharacterPoint)
+  case agentWritingProgress(CharacterProgress)
 }
 
 extension CharacterCommunication {
@@ -823,6 +920,11 @@ extension CharacterCommunication {
     case .listening: .listening
     case .voice: .voice
     }
+  }
+
+  var voiceLevelForPresentation: Double? {
+    guard case .voice(let level) = self else { return nil }
+    return level.value
   }
 }
 
@@ -851,6 +953,9 @@ extension CharacterState {
     case .automatic:
       if case .userWriting(let focus) = activity {
         return .writing(focus)
+      }
+      if case .agentWriting(_, let progress) = activity {
+        return .agentWritingProgress(progress)
       }
       return .automatic
     }

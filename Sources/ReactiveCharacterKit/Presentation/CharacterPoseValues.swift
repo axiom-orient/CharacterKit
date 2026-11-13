@@ -148,4 +148,6 @@ public struct CharacterPose: Sendable, Equatable {
   var brows: CharacterBrowPairPose = .neutral
   /// Renderer-neutral lower-face coupling resolved from the final eyes.
   var faceDynamics: CharacterFaceDynamics = .neutral
+  /// Bounded sampled channels for renderer-owned secondary detail motion.
+  var detailMotion: CharacterDetailMotion = .still
 }

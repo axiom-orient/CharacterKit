@@ -2,6 +2,8 @@ import Foundation
 
 /// Editable versioned authoring data. Call `compile()` before applying it.
 /// JSON fields are required except palette eye, which inherits feature when omitted.
+/// For untrusted JSON, use `CharacterDesign.decode(_:)` to enforce raw byte, nesting and
+/// duplicate-member limits. Generic Codable decoding does not apply those raw-data checks.
 public struct CharacterDesignProfile: Codable, Sendable, Equatable {
   public var schema: String
   public var id: String

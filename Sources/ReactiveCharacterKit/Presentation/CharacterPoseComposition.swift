@@ -12,6 +12,7 @@ extension CharacterPose {
       writingPhase: writingPhase, writingMotionPhase: writingMotionPhase,
       writingProgress: writingProgress, writingVisible: writingVisible,
       writingOpacity: writingOpacity, accents: accents, motionEnergy: motionEnergy,
-      eyeContours: eyeContours, brows: brows, faceDynamics: faceDynamics)
+      eyeContours: eyeContours, brows: brows, faceDynamics: faceDynamics,
+      detailMotion: detailMotion)
   }
 }

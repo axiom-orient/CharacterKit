@@ -1,6 +1,6 @@
 import Foundation
 
-/// Three minimal palettes and one articulated cat theme.
+/// Minimal palettes and articulated cat themes.
 ///
 /// Theme changes are presentation-only. They never change semantic state, animation identity,
 /// cancellation, task ownership, or expression meaning.
@@ -9,6 +9,7 @@ public enum CharacterTheme: String, CaseIterable, Sendable, Hashable, Identifiab
   case white
   case arcade
   case cat
+  case semi
 
   public var id: String { rawValue }
 
@@ -18,6 +19,7 @@ public enum CharacterTheme: String, CaseIterable, Sendable, Hashable, Identifiab
     case .white: "백"
     case .arcade: "아케이드"
     case .cat: "고양이"
+    case .semi: "세미"
     }
   }
 
@@ -27,6 +29,7 @@ public enum CharacterTheme: String, CaseIterable, Sendable, Hashable, Identifiab
     case .white: .white
     case .arcade: .arcade
     case .cat: .cat
+    case .semi: .semiDocumentCat
     }
   }
 
@@ -204,7 +207,7 @@ extension CharacterStyle {
           surface: CharacterColor(red: 0.095, green: 0.098, blue: 0.12),
           eyes: CharacterColor(red: 0.50, green: 0.72, blue: 0.27),
           nose: CharacterColor(red: 0.69, green: 0.41, blue: 0.44),
-          mouth: CharacterColor(red: 0.07, green: 0.045, blue: 0.075),
+          mouth: CharacterColor(red: 0.37, green: 0.17, blue: 0.13),
           mouthDetail: CharacterColor(red: 0.98, green: 0.96, blue: 0.93),
           tongue: CharacterColor(red: 0.85, green: 0.44, blue: 0.49),
           writing: CharacterColor(red: 0.50, green: 0.72, blue: 0.27),

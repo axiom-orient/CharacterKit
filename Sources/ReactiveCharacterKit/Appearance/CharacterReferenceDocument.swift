@@ -6,6 +6,8 @@ public enum CharacterReferenceDocumentError: Error, Sendable, Equatable {
 }
 
 /// Portable appearance input/output. The host owns storage and file permissions.
+/// Decode untrusted bytes with `init(data:)`; generic Codable decoding does not enforce
+/// the raw byte, nesting and duplicate-member limits of that initializer.
 public struct CharacterReferenceDocument: Sendable, Equatable, Codable {
   public static let schema = "character-reference/1"
   public static let maximumInputBytes = 16_384

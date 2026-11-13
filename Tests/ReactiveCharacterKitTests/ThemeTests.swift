@@ -7,7 +7,7 @@ final class ThemeTests: XCTestCase {
   func testBuiltInCatalogIsDeliberatelySmall() {
     XCTAssertEqual(
       CharacterTheme.allCases.map(\.rawValue),
-      ["black", "white", "arcade", "cat"])
+      ["black", "white", "arcade", "cat", "semi"])
     XCTAssertNil(CharacterTheme(rawValue: "saffron"))
     XCTAssertEqual(CharacterTheme.black.artDirection, .black)
   }

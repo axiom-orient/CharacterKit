@@ -12,15 +12,65 @@ extension ReactiveCharacter {
     projection: CharacterProjection = .softSphere,
     motionProfile: CharacterMotionProfile = .expressive
   ) -> CharacterPose {
-    CharacterMotion.sample(
+    sampledPose(
       state: state,
-      activityElapsed: elapsed,
+      elapsed: elapsed,
       expressionElapsed: expressionElapsed ?? elapsed,
       communicationElapsed: communicationElapsed ?? expressionElapsed ?? elapsed,
       animationElapsed: animationElapsed ?? expressionElapsed ?? elapsed,
       reduceMotion: reduceMotion,
       projection: projection,
-      profile: motionProfile
+      profile: motionProfile,
+      detailMotionStyle: .standard
+    )
+  }
+
+  /// Samples using the same visual configuration that will render the pose.
+  /// The art direction selects only renderer-owned secondary detail policy;
+  /// semantic state, clocks and the existing projection/profile contracts stay unchanged.
+  public static func pose(
+    state: CharacterState,
+    elapsed: Double,
+    artDirection: CharacterArtDirection,
+    expressionElapsed: Double? = nil,
+    communicationElapsed: Double? = nil,
+    animationElapsed: Double? = nil,
+    reduceMotion: Bool = false
+  ) -> CharacterPose {
+    sampledPose(
+      state: state,
+      elapsed: elapsed,
+      expressionElapsed: expressionElapsed ?? elapsed,
+      communicationElapsed: communicationElapsed ?? expressionElapsed ?? elapsed,
+      animationElapsed: animationElapsed ?? expressionElapsed ?? elapsed,
+      reduceMotion: reduceMotion,
+      projection: artDirection.projection,
+      profile: artDirection.motionProfile,
+      detailMotionStyle: artDirection.detailMotionStyle
+    )
+  }
+
+  private static func sampledPose(
+    state: CharacterState,
+    elapsed: Double,
+    expressionElapsed: Double,
+    communicationElapsed: Double,
+    animationElapsed: Double,
+    reduceMotion: Bool,
+    projection: CharacterProjection,
+    profile: CharacterMotionProfile,
+    detailMotionStyle: CharacterDetailMotionStyle
+  ) -> CharacterPose {
+    CharacterMotion.sample(
+      state: state,
+      activityElapsed: elapsed,
+      expressionElapsed: expressionElapsed,
+      communicationElapsed: communicationElapsed,
+      animationElapsed: animationElapsed,
+      reduceMotion: reduceMotion,
+      projection: projection,
+      profile: profile,
+      detailMotionStyle: detailMotionStyle
     )
   }
 }
@@ -42,7 +92,9 @@ enum CharacterMotion {
     animationElapsed: Double,
     reduceMotion: Bool,
     projection: CharacterProjection = .softSphere,
-    profile: CharacterMotionProfile = .expressive
+    profile: CharacterMotionProfile = .expressive,
+    voiceLevelOverride: Double? = nil,
+    detailMotionStyle: CharacterDetailMotionStyle = .standard
   ) -> CharacterPose {
     let activityTime = reduceMotion ? 0 : validatedTime(activityElapsed)
     let expressionTime = reduceMotion ? 0 : validatedTime(expressionElapsed)
@@ -98,6 +150,33 @@ enum CharacterMotion {
     let writingVisible = writingIsVisible(for: state.activity)
     let writingOpacity = writingVisible ? (ownsActivity ? 1.0 : 0.52) : 0
     let faceDynamics = CharacterFaceDynamics.sample(emotion: state.emotion, projection: projection)
+    let surface = composeSurface(
+      activitySurfacePose(
+        activity: state.activity,
+        elapsed: activityTime,
+        reduceMotion: reduceMotion,
+        intensity: profile.expressiveness * (ownsActivity ? 1 : 0.24)
+      ),
+      composeSurface(expression.surface, animation.surface)
+    )
+    let detailMotion = sampleDetailMotion(
+      state: state,
+      visualChannel: eyeSample.visualChannel,
+      time: detailMotionClock(
+        visualChannel: eyeSample.visualChannel,
+        activity: activityTime,
+        expression: expressionTime,
+        communication: communicationTime,
+        animation: animationTime
+      ),
+      trailEnergy: trailEnergy,
+      surface: surface,
+      expression: expression,
+      voiceLevelOverride: voiceLevelOverride,
+      reduceMotion: reduceMotion,
+      profile: profile,
+      detailMotionStyle: detailMotionStyle
+    )
 
     return CharacterPose(
       eyes: eyeSample.eyes,
@@ -114,17 +193,10 @@ enum CharacterMotion {
         expression: expression,
         expressionElapsed: expressionTime,
         elapsed: communicationTime,
-        reduceMotion: reduceMotion
+        reduceMotion: reduceMotion,
+        voiceLevelOverride: voiceLevelOverride
       ),
-      surface: composeSurface(
-        activitySurfacePose(
-          activity: state.activity,
-          elapsed: activityTime,
-          reduceMotion: reduceMotion,
-          intensity: profile.expressiveness * (ownsActivity ? 1 : 0.24)
-        ),
-        composeSurface(expression.surface, animation.surface)
-      ),
+      surface: surface,
       writingPhase: writingPhase(
         for: state.activity,
         elapsed: activityTime,
@@ -142,8 +214,106 @@ enum CharacterMotion {
       motionEnergy: trailEnergy,
       eyeContours: expression.eyeContours,
       brows: expression.brows,
-      faceDynamics: faceDynamics
+      faceDynamics: faceDynamics,
+      detailMotion: detailMotion
     )
+  }
+
+  private static func detailMotionClock(
+    visualChannel: CharacterVisualChannel,
+    activity: Double,
+    expression: Double,
+    communication: Double,
+    animation: Double
+  ) -> Double {
+    switch visualChannel {
+    case .neutral, .activity:
+      activity
+    case .emotion:
+      expression
+    case .communication:
+      communication
+    case .animation:
+      animation
+    }
+  }
+
+  private static func sampleDetailMotion(
+    state: CharacterState,
+    visualChannel: CharacterVisualChannel,
+    time: Double,
+    trailEnergy: Double,
+    surface: CharacterSurfacePose,
+    expression: CharacterExpressionSample,
+    voiceLevelOverride: Double?,
+    reduceMotion: Bool,
+    profile: CharacterMotionProfile,
+    detailMotionStyle: CharacterDetailMotionStyle
+  ) -> CharacterDetailMotion {
+    let isSEMIIdle = detailMotionStyle == .semiDocumentCat
+      && visualChannel == .neutral
+      && state.activity == .idle
+      && state.emotion == nil
+      && state.communication == .silent
+    guard !reduceMotion, profile.expressiveness > 0,
+      visualChannel != .neutral || isSEMIIdle
+    else {
+      return .still
+    }
+
+    let surfaceImpulse = clamp(
+      hypot(surface.offsetX, surface.offsetY) * 5
+        + abs(surface.scaleX - 1) * 2.5
+        + abs(surface.scaleY - 1) * 2.5
+        + abs(surface.angle) * 4,
+      lower: 0,
+      upper: 1
+    )
+    let secondaryEnergy = max(clamp(trailEnergy, lower: 0, upper: 1), surfaceImpulse)
+    // A laugh, nod or curious lean can carry body energy without an impact.
+    // Use the resolved owner so a visually expired one-shot cannot affect detail.
+    let activeAnimation = visualChannel == .animation ? state.animation?.animation : nil
+    let impulse: Double = switch activeAnimation {
+    case .bounce, .recoil, .shake: secondaryEnergy
+    default: 0
+    }
+    let expressionAmount = clamp(
+      max(
+        max(abs(expression.mouthCurvature) * 0.70, expression.mouthOpenness * 0.78),
+        abs(expression.mouthSkew) * 0.65),
+      lower: 0,
+      upper: 1
+    )
+    let communicationAmount: Double = switch state.communication {
+    case .silent:
+      0
+    case .chat:
+      0.72
+    case .listening:
+      0.62
+    case .voice(let level):
+      clamp(0.30 + (voiceLevelOverride ?? level.value) * 0.58, lower: 0, upper: 1)
+    }
+    let activityAmount: Double = if isSEMIIdle { 0.20 } else {
+      switch state.activity {
+      case .idle:
+        0.20
+      case .userWriting, .agentWriting:
+        0.48
+      case .agentThinking:
+        0.38
+      case .agentCancelling:
+        0.66
+      case .success, .failure, .cancelled:
+        0.72
+      }
+    }
+    let baseAmount = max(
+      max(expressionAmount, communicationAmount),
+      max(activityAmount, secondaryEnergy)
+    )
+    let amount = clamp(baseAmount * min(profile.expressiveness, 1.5), lower: 0, upper: 1)
+    return CharacterDetailMotion.sample(time: time, impulse: impulse, amount: amount)
   }
 
   static func motionFrame(
@@ -986,7 +1156,8 @@ enum CharacterMotion {
     expression: CharacterExpressionSample,
     expressionElapsed: Double,
     elapsed: Double,
-    reduceMotion: Bool
+    reduceMotion: Bool,
+    voiceLevelOverride: Double?
   ) -> CharacterMouthPose {
     let outputWritingVisible = activity.isAgentWriting
     guard requested else {
@@ -1033,7 +1204,8 @@ enum CharacterMotion {
         speechOpen = CharacterPresentationVariation.speechOpenness(elapsed: elapsed)
       }
     case .voice(let level):
-      speechOpen = 0.10 + level.value * 0.78
+      let presentedLevel = clamp(voiceLevelOverride ?? level.value, lower: 0, upper: 1)
+      speechOpen = 0.10 + presentedLevel * 0.78
     }
 
     let cycle = MouthGlyphLibrary.cycleSample(

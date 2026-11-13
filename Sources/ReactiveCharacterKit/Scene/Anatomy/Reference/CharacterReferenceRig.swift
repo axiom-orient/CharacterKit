@@ -49,7 +49,9 @@ enum CharacterReferenceMotionPolicy {
   static let maximumEarAngle = 0.05
   static let maximumGazeX = 0.23
   static let maximumGazeY = 0.24
-  static let irisTravelFraction = 0.095
+  // The authored feline iris is nearly as wide as its socket. Large travel exposes
+  // unfinished underpainting and cuts the artwork at the registered frame edge.
+  static let catIrisTravelFraction = 0.045
   static let eyeTravelFraction = 0.085
   static let earRootOverlap = 7.0
 }

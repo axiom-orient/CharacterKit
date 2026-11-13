@@ -206,7 +206,7 @@ final class CharacterCustomizationTests: XCTestCase {
 
   func testBuiltInsKeepMinimalNosesHiddenAndNeverEnableFaceStickers() throws {
     for theme in CharacterTheme.allCases {
-      XCTAssertEqual(theme.artDirection.components.contains(.nose), theme == .cat)
+      XCTAssertEqual(theme.artDirection.components.contains(.nose), theme == .cat || theme == .semi)
       XCTAssertFalse(theme.artDirection.components.contains(.ornaments))
       for emotion in CharacterEmotion.allCases {
         let state = ReactiveCharacter.reduce(state: .idle, event: .emotionChanged(emotion)).state
@@ -214,7 +214,7 @@ final class CharacterCustomizationTests: XCTestCase {
         XCTAssertTrue(pose.accents.isEmpty)
         let scene = try CharacterSceneBuilder.scene(
           pose: pose, artDirection: theme.artDirection, width: 160, height: 160)
-        XCTAssertEqual(scene.nodes.contains { $0.id == "nose" }, theme == .cat)
+        XCTAssertEqual(scene.nodes.contains { $0.id == "nose" }, theme == .cat || theme == .semi)
         XCTAssertFalse(scene.nodes.contains { $0.id.hasPrefix("art.accent") })
       }
     }

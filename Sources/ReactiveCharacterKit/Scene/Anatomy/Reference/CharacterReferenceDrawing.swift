@@ -73,8 +73,8 @@ struct CharacterReferenceDrawing {
         let neutral = part.part.isLeft ? rest.eyes.left : rest.eyes.right
         let contour = part.part.isLeft ? pose.eyeContours.left : pose.eyeContours.right
         if appearance.isCat {
-          result += catEyeNodes(part: part, asset: asset, eye: eye, contour: contour,
-            pose: pose, direction: direction, whole: whole, base: base)
+          result += catEyeNodes(part: part, asset: asset, pose: pose,
+            treatment: direction.style.eyeTreatment, whole: whole, base: base)
           continue
         }
         let gazeX = bounded(pose.face.gazeX / CharacterReferenceMotionPolicy.maximumGazeX)
@@ -150,51 +150,34 @@ struct CharacterReferenceDrawing {
   }
 
   private static func catEyeNodes(
-    part: CharacterReferenceRig.Layer, asset: CharacterImageAsset, eye: CharacterEyePose,
-    contour: CharacterEyeContour, pose: CharacterPose, direction: CharacterArtDirection,
+    part: CharacterReferenceRig.Layer, asset: CharacterImageAsset,
+    pose: CharacterPose, treatment: CharacterEyeTreatment,
     whole: CharacterRect, base: CharacterSceneTransform
   ) -> [CharacterSceneNode] {
     let frame = part.frame
-    let left = part.part.isLeft
-    // Reuse the established feline aperture/closure authority. Source texture is clipped by
-    // moving lids, never squashed into a rectangular patch or replaced by a flat green shape.
-    let aperture = CharacterCatEye(eye: eye, contour: contour, left: left,
-      treatment: direction.style.eyeTreatment, gazeX: 0, gazeY: 0, sizeResponse: 0)
-    func map(_ path: CharacterVectorPath) -> CharacterVectorPath {
-      path.mapped { point in .init(
-        x: frame.midX + (point.x - aperture.centerX) * frame.width / CharacterCatMetrics.eyeWidth,
-        y: frame.midY + (point.y - aperture.centerY) * frame.height / CharacterCatMetrics.eyeHeight) }
-    }
-    let rest = contour == .neutral && eye.blink == 0 && direction.style.eyeTreatment == .vertical
-    let clip: CharacterVectorPath = rest ? .rectangle(frame) : map(aperture.aperture(left: left))
-    let local = CharacterSceneTransform.around(x: frame.midX, y: frame.midY,
-      angle: rest ? 0 : aperture.angle)
+    // The source body has painted-over eye sockets, not usable eyelid artwork.
+    // Keep the authored socket intact in every expression; clipping it to a cartoon
+    // aperture reveals those unfinished pixels. Gaze moves only the iris inside it.
     var bounds = whole
+    var local = CharacterSceneTransform.identity
     if part.part.isIris {
       bounds = .init(
         x: bounded(pose.face.gazeX / CharacterReferenceMotionPolicy.maximumGazeX)
-          * frame.width * CharacterReferenceMotionPolicy.irisTravelFraction,
+          * frame.width * CharacterReferenceMotionPolicy.catIrisTravelFraction,
         y: bounded(pose.face.gazeY / CharacterReferenceMotionPolicy.maximumGazeY)
-          * frame.height * CharacterReferenceMotionPolicy.irisTravelFraction,
+          * frame.height * CharacterReferenceMotionPolicy.catIrisTravelFraction,
         width: whole.width, height: whole.height)
-    }
-    var nodes: [CharacterSceneNode] = []
-    if aperture.closure < 0.97 {
-      nodes.append(.init(id: "reference.\(part.part.rawValue)", layer: .features,
-        path: .init(), fill: nil, stroke: nil, lineWidth: 0, opacity: 1,
-        transform: base.concatenating(local), clips: [clip],
-        image: .init(asset: asset, bounds: .init(bounds), contentMode: .fit)))
-    }
-    if !part.part.isIris, !rest {
-      let ink = CharacterColor(uncheckedRed: 0.16, green: 0.095, blue: 0.06)
-      for (name, path) in [("upper", aperture.upperLid(left: left)),
-        ("lower", aperture.lowerLid(left: left))] {
-        nodes.append(.init(id: "reference.\(part.part.rawValue).\(name)", layer: .features,
-          path: map(path), fill: nil, stroke: ink, lineWidth: max(0.7, frame.width * 0.023),
-          opacity: 1, transform: base.concatenating(local), clips: []))
+      let shape: (Double, Double) = switch treatment {
+      case .vertical: (1, 1)
+      case .round: (1, 0.90)
+      case .horizontal: (1.04, 0.80)
       }
+      local = .around(x: frame.midX, y: frame.midY, scaleX: shape.0, scaleY: shape.1)
     }
-    return nodes
+    return [.init(id: "reference.\(part.part.rawValue)", layer: .features,
+      path: .init(), fill: nil, stroke: nil, lineWidth: 0, opacity: 1,
+      transform: base.concatenating(local), clips: [.rectangle(frame)],
+      image: .init(asset: asset, bounds: .init(bounds), contentMode: .fit))]
   }
 
   private static func catMouthNodes(
@@ -204,24 +187,34 @@ struct CharacterReferenceDrawing {
     let x = frame.midX + mouth.skew * frame.width * 0.08
     let y = frame.y + frame.height * 0.14
     let width = frame.width * min(0.33, max(0.20, mouth.width * 0.40))
-    let bend = mouth.curvature * frame.height * 0.15
+    // Scene coordinates grow downward: positive expression curvature lifts the
+    // corners, while negative curvature lowers them for a frown.
+    let bend = -mouth.curvature * frame.height * 0.15
+    let controlY = y + frame.height * (0.18 - max(0, -mouth.curvature) * 0.30)
     var outline = CharacterVectorPath()
     outline.move(x, frame.y - frame.height * 0.05)
     outline.line(x, y)
     outline.move(x - width, y + bend)
-    outline.quad(x - width * 0.45, y + frame.height * 0.18, x, y)
-    outline.quad(x + width * 0.45, y + frame.height * 0.18,
+    outline.quad(x - width * 0.45, controlY, x, y)
+    outline.quad(x + width * 0.45, controlY,
       x + width, y + bend)
-    var nodes = [CharacterSceneNode(id: "reference.mouth.articulated", layer: .features,
-      path: outline, fill: nil, stroke: colors.mouth, lineWidth: max(0.65, frame.width * 0.025),
-      opacity: mouth.opacity, transform: transform, clips: [])]
+    var nodes: [CharacterSceneNode] = []
     if mouth.openness > 0.06 {
-      let opening = CharacterRect(x: x - width * 0.38, y: y + frame.height * 0.08,
-        width: width * 0.76, height: frame.height * min(0.42, mouth.openness * 0.7))
+      let halfOpening = width * 0.38
+      let depth = frame.height * min(0.32, mouth.openness * 0.55)
+      var opening = CharacterVectorPath()
+      opening.move(x - halfOpening, y)
+      opening.quad(x, y + depth * 0.20, x + halfOpening, y)
+      opening.quad(x + halfOpening * 0.75, y + depth, x, y + depth)
+      opening.quad(x - halfOpening * 0.75, y + depth, x - halfOpening, y)
+      opening.close()
       nodes.append(.init(id: "reference.mouth.open", layer: .features,
-        path: .ellipse(opening), fill: .solid(colors.mouth), stroke: nil, lineWidth: 0,
+        path: opening, fill: .solid(colors.mouth), stroke: nil, lineWidth: 0,
         opacity: mouth.opacity, transform: transform, clips: []))
     }
+    nodes.append(CharacterSceneNode(id: "reference.mouth.articulated", layer: .features,
+      path: outline, fill: nil, stroke: colors.mouth, lineWidth: max(0.55, frame.width * 0.013),
+      opacity: mouth.opacity, transform: transform, clips: []))
     return nodes
   }
 

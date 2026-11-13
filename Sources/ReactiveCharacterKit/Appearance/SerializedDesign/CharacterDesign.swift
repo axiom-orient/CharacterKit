@@ -119,8 +119,9 @@ public struct CharacterDesign: Sendable, Equatable {
       maximumReturnDuration: t.maximumReturnDuration,
       neutralHoldDuration: t.neutralHoldDuration, rebound: t.rebound
     )
-    guard profile.accessories.count <= 16 else {
-      throw CharacterDesignError.invalid(path: "accessories", reason: "maximum is 16")
+    guard profile.accessories.count <= CharacterArtDirection.maximumAccessoryCount else {
+      throw CharacterDesignError.invalid(
+        path: "accessories", reason: "maximum is \(CharacterArtDirection.maximumAccessoryCount)")
     }
     var ids = Set<String>()
     var accessories: [CharacterDesignedAccessory] = []

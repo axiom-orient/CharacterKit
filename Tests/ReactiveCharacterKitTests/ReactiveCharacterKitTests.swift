@@ -1219,7 +1219,12 @@ final class ReactiveCharacterKitTests: XCTestCase {
       event: .agentProgress(taskID: task, progress: 0.6)
     ).state
     XCTAssertFalse(session.update(state: progressed, at: 0.4))
-    XCTAssertEqual(session.inspect(at: 0.4).phase, .performing)
+    let status = session.inspect(at: 0.4)
+    XCTAssertEqual(status.phase, .gazeTransition(progress: 0))
+    XCTAssertEqual(status.state, progressed)
+    XCTAssertLessThanOrEqual(
+      status.remainingHandoffDuration,
+      CharacterPresentationPolicy.maximumGazeTransitionDuration)
   }
 
   func testInspectionDoesNotOfferDuplicateCancellationWhileCancellationIsPending() {

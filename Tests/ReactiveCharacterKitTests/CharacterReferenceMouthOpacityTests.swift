@@ -5,7 +5,8 @@ import Testing
 struct CharacterReferenceMouthOpacityTests {
   @Test(arguments: [0.25, 0.5, 1.0])
   func articulationFadesTeethAndTongueOnce(opacity: Double) throws {
-    let rest = ReactiveCharacter.pose(state: .idle, elapsed: 0, reduceMotion: true)
+    var rest = ReactiveCharacter.pose(state: .idle, elapsed: 0, reduceMotion: true)
+    rest.detailMotion = .sample(time: 0.11, impulse: 0.4, amount: 0.7)
     let mouth = CharacterMouthPose(
       visible: true, opacity: opacity, curvature: 1, openness: 1, width: 0.7, skew: 0,
       intrinsicAspect: rest.mouth.intrinsicAspect, detailOpacity: rest.mouth.detailOpacity,
@@ -17,7 +18,9 @@ struct CharacterReferenceMouthOpacityTests {
       noseOffsetX: rest.noseOffsetX, mouth: mouth, surface: rest.surface,
       writingPhase: rest.writingPhase, writingMotionPhase: rest.writingMotionPhase,
       writingProgress: rest.writingProgress, writingVisible: rest.writingVisible,
-      writingOpacity: rest.writingOpacity, accents: rest.accents, motionEnergy: rest.motionEnergy)
+      writingOpacity: rest.writingOpacity, accents: rest.accents, motionEnergy: rest.motionEnergy,
+      detailMotion: rest.detailMotion)
+    #expect(pose.detailMotion == rest.detailMotion)
     let appearance = CharacterReferenceAppearance.headsetFree()
     let scene = try CharacterSceneBuilder.scene(
       pose: pose, artDirection: appearance.artDirection, width: 512, height: 560)

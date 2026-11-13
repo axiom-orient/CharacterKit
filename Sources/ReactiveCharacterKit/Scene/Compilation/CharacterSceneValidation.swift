@@ -23,8 +23,13 @@ enum CharacterSceneValidation {
     try transform(scene.surfaceTransform, path: "scene.surfaceTransform")
 
     var identifiers = Set<String>()
+    var previousLayer = CharacterSceneLayer.background.rawValue
     for (index, node) in scene.nodes.enumerated() {
       let path = "scene.nodes[\(index)](\(node.id))"
+      guard node.layer.rawValue >= previousLayer else {
+        throw CharacterDesignError.invalid(path: path + ".layer", reason: "noncanonical painter order")
+      }
+      previousLayer = node.layer.rawValue
       guard !node.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
         throw CharacterDesignError.invalid(path: path + ".id", reason: "empty node identity")
       }

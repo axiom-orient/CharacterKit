@@ -11,4 +11,6 @@ public enum CharacterAnatomy: Sendable, Equatable {
   case cat(CharacterProceduralCatTheme)
   case reference(CharacterReferenceAppearance)
   case portrait(CharacterPortraitStyle)
+  /// Authored SEMI fur with live, pose-driven features and document articulation.
+  case semiDocumentCat
 }

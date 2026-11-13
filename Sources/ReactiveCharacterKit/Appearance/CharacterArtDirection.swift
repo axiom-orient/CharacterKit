@@ -30,6 +30,9 @@ public struct CharacterArtDirection: Sendable, Equatable {
   /// One face frame for all built-in appearances. A palette must never resize the character.
   public static let canonicalContentInset = 0.12
 
+  /// Limits per-frame image work for a validated appearance, matching the design document budget.
+  public static let maximumAccessoryCount = 16
+
   public init(
     name: String,
     components: CharacterComponents = .default,
@@ -47,6 +50,10 @@ public struct CharacterArtDirection: Sendable, Equatable {
   ) throws {
     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { throw CharacterArtDirectionError.invalidName }
+    guard assets.accessories.count <= Self.maximumAccessoryCount else {
+      throw CharacterArtDirectionError.invalidValue(
+        field: "assets.accessories.count", value: Double(assets.accessories.count))
+    }
     for (field, value) in [("featureGlow", featureGlow), ("ornamentGlow", ornamentGlow)] {
       guard value.isFinite, (0...1.5).contains(value) else {
         throw CharacterArtDirectionError.invalidValue(field: field, value: value)
@@ -141,8 +148,10 @@ public struct CharacterArtDirection: Sendable, Equatable {
       uncheckedName: appearance.isCat ? "Norwegian Forest Cat" : "Reference Mascot",
       components: components, layout: .standard,
       style: appearance.isCat ? .catNorwegianForest : .black,
-      surface: .visible, projection: .flat, motionProfile: .cartoon,
-      transitionProfile: .cartoon, assets: .empty, featureGlow: 0, ornamentGlow: 0,
+      surface: .visible, projection: .flat,
+      motionProfile: appearance.isCat ? .companion : .cartoon,
+      transitionProfile: appearance.isCat ? .soft : .cartoon,
+      assets: .empty, featureGlow: 0, ornamentGlow: 0,
       contentInset: 0, anatomy: .reference(appearance))
   }
 
@@ -188,6 +197,8 @@ extension CharacterArtDirection {
         return [appearance.asset(for: layer)].compactMap { $0 }
       }
       result.append(.init(uncheckedName: "reference-\(appearance.artworkID.rawValue)-backdrop", source: .package))
+    } else if case .semiDocumentCat = anatomy, surface == .visible {
+      result += CharacterSEMIAssets.all
     } else if case .cat(.animated) = anatomy {
       if surface == .visible { result += CharacterCatAssets.body }
       if components.contains(.nose) { result.append(CharacterCatAssets.nose) }

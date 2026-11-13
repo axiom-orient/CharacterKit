@@ -1,6 +1,16 @@
 import Foundation
 
 extension CharacterSceneBuilder {
+  /// Builds the SEMI scene used by the earlier single-character API.
+  /// Use the art-direction overload to select another appearance.
+  public static func scene(
+    pose: CharacterPose, width: Double, height: Double
+  ) throws -> CharacterScene {
+    try scene(
+      pose: pose, artDirection: .semiDocumentCat,
+      width: width, height: height, includeBackground: false)
+  }
+
   /// One immutable hybrid frame for both Canvas and SVG. No resource I/O occurs here.
   public static func scene(
     pose: CharacterPose, artDirection: CharacterArtDirection,
@@ -59,12 +69,17 @@ struct CharacterArtDrawing {
       drawing.nodes += CharacterReferenceDrawing.nodes(
         pose: pose, direction: artDirection, appearance: reference, board: board,
         transform: transform, includeBackground: includeBackground)
+    case .semiDocumentCat:
+      drawing.nodes += CharacterSEMIDrawing.nodes(
+        pose: pose, direction: artDirection, board: board,
+        transform: transform, simplified: drawing.simplified)
     case .portrait(let portraitStyle):
       drawing.nodes += CharacterPortraitDrawing.nodes(
         pose: pose, direction: artDirection, style: portraitStyle,
         board: board, transform: transform, simplified: drawing.simplified)
     }
-    if artDirection.components.contains(.writing), pose.writingVisible {
+    if artDirection.anatomy != .semiDocumentCat,
+      artDirection.components.contains(.writing), pose.writingVisible {
       drawing.writing(pose)
     }
     return drawing.nodes

@@ -8,6 +8,8 @@ public enum CharacterPresentationDirective: Sendable, Equatable {
 
 /// Semantic transition evidence with a presentation handoff projection.
 /// Reducer disposition is not evidence of external effect completion.
+/// `.unchanged` means no external neutral/gaze handoff is needed; continuous voice-level
+/// retargeting remains owned by `CharacterPresentationSession`.
 public struct CharacterActionReceipt: Sendable, Equatable {
   public let event: CharacterEvent
   public let stateBefore: CharacterState
