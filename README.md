@@ -174,6 +174,16 @@ into the SDK; it does not run an agent or a network operation. Its host owns sem
 state and animation-end tasks, cancels obsolete tasks, and sends completion
 observations back through the reducer.
 
+Choose **모든 캐릭터 비교·시연** to compare all 17 real SDK views with the same
+inputs. The showcase records 12 emotions, speech levels, four gaze targets, listening,
+task progress and eight actions into a new temporary folder. It labels known legacy
+eyelid limits; the recording is functional visual evidence, not a frame-performance test.
+Encode its captured frames into a video and a phase-navigation page with FFmpeg:
+
+```sh
+python3 Tools/HostDemo/export_showcase.py /path/to/CharacterKit-Showcase-capture /path/to/new-review-output
+```
+
 The separate benchmark measures warm release-build pose/scene computation and offline SVG/PNG export:
 
 ```sh

@@ -3,6 +3,7 @@ import ReactiveCharacterKit
 import SwiftUI
 
 struct HostDemoView: View {
+  @Environment(\.openWindow) private var openWindow
   @State private var semanticState = CharacterState.idle
   @State private var appearance: CharacterDemoAppearance = .norwegianGIF
   @State private var emotion: CharacterEmotion? = .joy
@@ -137,6 +138,8 @@ struct HostDemoView: View {
     VStack(alignment: .leading, spacing: 6) {
       Text("CharacterKit · Native host input demo")
         .font(.title2.weight(.semibold))
+      Button("모든 캐릭터 비교·시연") { openWindow(id: "all-characters") }
+        .accessibilityIdentifier("openAllCharactersButton")
       Text("This window injects host events into the SDK. No agent, network request, or business operation is running.")
         .font(.callout)
         .foregroundStyle(.secondary)
