@@ -20,10 +20,10 @@ struct CharacterShowcaseView: View {
         Text(model.message).font(.caption).textSelection(.enabled)
       }
       ShowcaseCaptureSurface(model: model)
-        .frame(width: 1120, height: 900)
+        .frame(width: 1120, height: 700)
     }
     .padding(12)
-    .frame(width: 1144, height: 946)
+    .frame(width: 1144, height: 746)
   }
 }
 
@@ -47,7 +47,7 @@ private struct CharacterShowcaseGrid: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack(alignment: .firstTextBaseline) {
-        Text("CharacterKit · 17종 실제 렌더러 비교").font(.title2.bold())
+        Text("CharacterKit · \(CharacterDemoAppearance.allCases.count)종 실제 렌더러 비교").font(.title2.bold())
         Spacer()
         Text(model.phase).font(.headline).foregroundStyle(.blue)
       }
@@ -56,24 +56,13 @@ private struct CharacterShowcaseGrid: View {
       LazyVGrid(columns: columns, spacing: 10) {
         ForEach(CharacterDemoAppearance.allCases) { appearance in
           VStack(spacing: 3) {
-            Group {
-              if appearance == .norwegianGIF {
-                ReactiveCharacterGIFView(state: model.state, playbackTrigger: model.trigger,
-                  accessibilityLabel: appearance.label)
-              } else {
-                ReactiveCharacterView(state: model.state, artDirection: appearance.direction,
-                  accessibilityLabel: appearance.label)
-              }
-            }
+            appearance.view(state: model.state, playbackTrigger: model.trigger,
+              accessibilityLabel: appearance.label)
             .frame(width: 172, height: 150)
             .characterIncludesBackground(false)
             Text(appearance.label).font(.system(size: 12, weight: .semibold))
-            if appearance.hasLegacyEyelids {
-              Text("구형 레이어 · 눈 감기 제한").font(.system(size: 10)).foregroundStyle(.orange)
-            } else {
-              Text(appearance == .norwegianGIF ? "GIF + 실시간 얼굴 리그" : "공유 포즈 렌더러")
-                .font(.system(size: 10)).foregroundStyle(.secondary)
-            }
+            Text(appearance == .norwegianGIF ? "12감정 GIF + 실시간 얼굴 리그" : "공유 포즈 렌더러")
+              .font(.system(size: 10)).foregroundStyle(.secondary)
           }
           .frame(width: 210, height: 192)
           .background(.white, in: RoundedRectangle(cornerRadius: 12))
@@ -81,22 +70,11 @@ private struct CharacterShowcaseGrid: View {
         }
       }
       Spacer(minLength: 0)
-      Text("구형 노르웨이 4종은 저해상도 원화와 닫힌 눈 레이어 부재로 눈 감기 검증에서 제한이 있습니다. 새 GIF 고양이와 구분하여 표시합니다.")
-        .font(.system(size: 11)).foregroundStyle(.secondary)
     }
     .padding(14)
-    .frame(width: 1120, height: 900)
+    .frame(width: 1120, height: 700)
     .background(Color(red: 0.94, green: 0.95, blue: 0.97))
     .environment(\.colorScheme, .light)
-  }
-}
-
-extension CharacterDemoAppearance {
-  var hasLegacyEyelids: Bool {
-    switch self {
-    case .norwegianHero, .norwegianWarm, .norwegianSilver, .norwegianCream: true
-    default: false
-    }
   }
 }
 
@@ -171,6 +149,10 @@ private final class CharacterShowcaseModel: ObservableObject {
         }
         let json = try JSONSerialization.data(withJSONObject: observations, options: [.prettyPrinted, .sortedKeys])
         try json.write(to: output.appendingPathComponent("observations.json"))
+        let inventory = try JSONSerialization.data(withJSONObject:
+          CharacterDemoAppearance.allCases.map { ["id": $0.rawValue, "label": $0.label] },
+          options: [.prettyPrinted, .sortedKeys])
+        try inventory.write(to: output.appendingPathComponent("characters.json"))
         state = .idle; phase = "시연 완료 · 기본 표정"; running = false
         message = "완료: \(output.path)"
       } catch is CancellationError { running = false; message = "시연 중지됨" }
@@ -190,12 +172,12 @@ private final class CharacterShowcaseModel: ObservableObject {
 
   private func capture(to url: URL) throws {
     guard let view = captureView, let layer = view.layer,
-      let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1120, pixelsHigh: 900,
+      let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1120, pixelsHigh: 700,
         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
       let context = NSGraphicsContext(bitmapImageRep: rep)?.cgContext
     else { throw CocoaError(.coderInvalidValue) }
-    context.translateBy(x: 0, y: 900)
+    context.translateBy(x: 0, y: 700)
     context.scaleBy(x: 1, y: -1)
     (layer.presentation() ?? layer).render(in: context)
     guard let data = rep.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
@@ -216,6 +198,14 @@ private final class CharacterShowcaseModel: ObservableObject {
     let labels = ["기쁨", "애정", "감사", "관심", "놀람", "신뢰", "슬픔", "불안", "화남", "불쾌", "부끄러움", "피곤함"]
     for (emotion, label) in zip(CharacterEmotion.allCases, labels) {
       result.append(Phase(label: "감정 · \(label)", duration: 2.4, events: [.emotionChanged(emotion)], replay: true))
+    }
+    for (index, item) in zip(CharacterEmotion.allCases, labels).enumerated() {
+      let (emotion, label) = item
+      if let target = try? CharacterPoint(validatingX: index.isMultiple(of: 2) ? 0 : 1, y: 0.5) {
+        result.append(Phase(label: "감정 + 말하기 + 시선 · \(label)", duration: 2.6,
+          events: [.emotionChanged(emotion), .voiceStarted, .attentionFocused(target)],
+          kind: .voice, replay: true))
+      }
     }
     result.append(Phase(label: "말하기 · 음량 0↔1", duration: 4, events: [.voiceStarted], kind: .voice))
     for (label, x, y) in [("왼쪽",0.0,0.5),("오른쪽",1.0,0.5),("위",0.5,0.0),("아래",0.5,1.0)] {

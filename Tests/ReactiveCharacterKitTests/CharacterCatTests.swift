@@ -4,7 +4,7 @@ import XCTest
 @testable import ReactiveCharacterKit
 
 final class CharacterCatTests: XCTestCase {
-  private let catDirections: [CharacterArtDirection] = [.cat, .catSimple2D, .catNorwegianForest]
+  private let catDirections: [CharacterArtDirection] = [.cat, .catSimple2D]
   private let expectedAssets: Set<String> = [
     "cat-head", "cat-neck", "cat-ear-left", "cat-ear-right", "cat-nose",
     "cat-whiskers-left", "cat-whiskers-right",
@@ -63,7 +63,7 @@ final class CharacterCatTests: XCTestCase {
     let assets = CharacterAssetPack(face: face)
     for anatomy in [
       CharacterAnatomy.cat(.animated), .cat(.simple2D),
-      .reference(.norwegianForest(.hero)), .reference(.mascot(variant: .hero)), .portrait(.standard),
+      .reference(.mascot(variant: .hero)), .portrait(.standard),
     ] {
       XCTAssertThrowsError(
         try CharacterArtDirection(name: "conflict", assets: assets, anatomy: anatomy)
@@ -77,7 +77,7 @@ final class CharacterCatTests: XCTestCase {
   func testUnsupportedAnatomyGeometryAndGlowFailExplicitlyInsteadOfBeingIgnored() {
     for anatomy in [
       CharacterAnatomy.cat(.animated), .cat(.simple2D),
-      .reference(.norwegianForest(.hero)), .reference(.mascot(variant: .hero)), .portrait(.standard),
+      .reference(.mascot(variant: .hero)), .portrait(.standard),
     ] {
       XCTAssertThrowsError(
         try CharacterArtDirection(name: "Invalid rig", layout: .hero, anatomy: anatomy)
@@ -375,8 +375,6 @@ final class CharacterCatTests: XCTestCase {
   func testCatSelectionHasOneExplicitAnatomyOwner() throws {
     XCTAssertEqual(CharacterTheme.cat.artDirection.anatomy, .cat(.animated))
     XCTAssertEqual(CharacterArtDirection.catSimple2D.anatomy, .cat(.simple2D))
-    XCTAssertEqual(CharacterArtDirection.catNorwegianForest.anatomy,
-                   .reference(.norwegianForest(.hero)))
     XCTAssertEqual(CharacterProceduralCatTheme.allCases, [.animated, .simple2D])
     XCTAssertEqual(
       CharacterArtDirection.catSimple2D.replacingFaceTreatment(eyes: .horizontal).anatomy,
@@ -402,18 +400,6 @@ final class CharacterCatTests: XCTestCase {
         XCTAssertNil(rendered.nodes.first { $0.id == "eye.left.pupil" })
         XCTAssertTrue(direction.requiredImageAssets.isEmpty)
         XCTAssertTrue(rendered.nodes.allSatisfy { $0.image == nil })
-      case .reference:
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.body" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.earLeft" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.earRight" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.mane" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.eyeLeft" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.eyeRight" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.irisLeft" })
-        XCTAssertNotNil(rendered.nodes.first { $0.id == "reference.irisRight" })
-        XCTAssertFalse(direction.requiredImageAssets.isEmpty)
-        XCTAssertTrue(direction.requiredImageAssets.allSatisfy { $0.name.hasPrefix("reference-norwegian-") })
-        XCTAssertTrue(rendered.nodes.contains { $0.image != nil })
       default:
         XCTFail("Unexpected cat anatomy: \(direction.anatomy)")
       }
@@ -421,33 +407,19 @@ final class CharacterCatTests: XCTestCase {
   }
 
   func testAuthoredCatEarRootIsStationaryOverlapUnderMovingEar() throws {
-    for direction in [CharacterArtDirection.cat, .catNorwegianForest] {
-      let neutral = try scene(pose(), direction: direction)
-      let angry = try scene(pose(.angerIrritation), direction: direction)
-      for side in ["left", "right"] {
-        let movingID: String
-        let baseID: String
-        switch direction.anatomy {
-        case .cat(.animated):
-          movingID = "cat.ear.\(side)"
-          baseID = "cat.ear.\(side).base"
-        case .reference:
-          movingID = "reference.ear\(side.capitalized)"
-          baseID = "reference.ear\(side.capitalized).root"
-        default:
-          return XCTFail("This test requires authored ear images")
-        }
-        let movingNeutral = try node(movingID, neutral)
-        let movingAngry = try node(movingID, angry)
-        let baseNeutral = try node(baseID, neutral)
-        let baseAngry = try node(baseID, angry)
-        XCTAssertNotEqual(movingNeutral.transform, movingAngry.transform)
-        XCTAssertEqual(baseNeutral.transform, baseAngry.transform)
-        XCTAssertEqual(baseNeutral.image?.asset, movingNeutral.image?.asset)
-        XCTAssertEqual(baseNeutral.clips.count, 1)
-        XCTAssertFalse(baseNeutral.clips[0].commands.isEmpty)
-        XCTAssertEqual(baseNeutral.layer, .behindSurface)
-      }
+    let neutral = try scene(pose())
+    let angry = try scene(pose(.angerIrritation))
+    for side in ["left", "right"] {
+      let movingNeutral = try node("cat.ear.\(side)", neutral)
+      let movingAngry = try node("cat.ear.\(side)", angry)
+      let baseNeutral = try node("cat.ear.\(side).base", neutral)
+      let baseAngry = try node("cat.ear.\(side).base", angry)
+      XCTAssertNotEqual(movingNeutral.transform, movingAngry.transform)
+      XCTAssertEqual(baseNeutral.transform, baseAngry.transform)
+      XCTAssertEqual(baseNeutral.image?.asset, movingNeutral.image?.asset)
+      XCTAssertEqual(baseNeutral.clips.count, 1)
+      XCTAssertFalse(baseNeutral.clips[0].commands.isEmpty)
+      XCTAssertEqual(baseNeutral.layer, .behindSurface)
     }
   }
 
@@ -493,13 +465,46 @@ final class CharacterCatTests: XCTestCase {
       }
     }
 
-    let norwegian = try scene(pose(), direction: CharacterArtDirection.catNorwegianForest)
-    XCTAssertNotNil(norwegian.nodes.first { $0.id == "reference.eyeLeft" })
-    XCTAssertNotNil(norwegian.nodes.first { $0.id == "reference.irisLeft" })
-    XCTAssertTrue(norwegian.nodes.contains { $0.id.hasPrefix("reference.eye") || $0.id.hasPrefix("reference.iris") })
   }
 
-  func testThreeCatThemesCoverEveryExpressionNineGazescapesAndReduceMotion() throws {
+  @MainActor
+  func testSimpleCatAngerReadsAsInwardSlantedEyesAndDownturnedMouth() throws {
+    let angry = pose(.angerIrritation)
+    let rendered = try scene(angry, direction: .catSimple2D)
+    for side in ["left", "right"] {
+      let p = points(try node("eye.\(side)", rendered).path)
+      let xs = p.map(\.x)
+      XCTAssertGreaterThan(xs.max()! - xs.min()!, 45, "Anger must survive icon-size rendering")
+      let midX = (xs.max()! + xs.min()!) / 2
+      let inner = p.filter { side == "left" ? $0.x > midX + 3 : $0.x < midX - 3 }
+      let outer = p.filter { side == "left" ? $0.x < midX - 3 : $0.x > midX + 3 }
+      XCTAssertGreaterThan(inner.map(\.y).reduce(0, +) / Double(inner.count),
+        outer.map(\.y).reduce(0, +) / Double(outer.count))
+    }
+    let lips = points(try node("mouth.lip", rendered).path)
+    XCTAssertGreaterThan(lips.map(\.x).max()! - lips.map(\.x).min()!, 45)
+    XCTAssertGreaterThan(lips.first!.y, lips[2].y + 10, "Corners descend from the central arch")
+    let source = angry.eyes.left
+    let closed = CharacterEyePose(centerX: source.centerX, centerY: source.centerY,
+      width: source.width, height: source.height, angle: source.angle,
+      unblinkedWidth: source.unblinkedWidth, unblinkedHeight: source.unblinkedHeight, blink: 1)
+    let closedPath = CharacterCompactEyeGeometry.path(eye: closed, contour: angry.eyeContours.left,
+      left: true, center: .init(x: 178, y: 346), width: 23, height: 78,
+      treatment: .vertical, thickness: 6, expressionWidth: 55)
+    XCTAssertGreaterThan(points(closedPath).map(\.x).max()! - points(closedPath).map(\.x).min()!, 45)
+    #if os(iOS) || os(macOS)
+      if let path = ProcessInfo.processInfo.environment["CHARACTERKIT_SIMPLE_REVIEW_DIR"] {
+        let directory = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for (name, emotion) in [("neutral", nil), ("anger", CharacterEmotion.angerIrritation), ("joy", .joy)] {
+          let frame = try scene(pose(emotion), direction: .catSimple2D)
+          try CharacterScenePNGRenderer.render(frame).write(to: directory.appendingPathComponent(name + ".png"))
+        }
+      }
+    #endif
+  }
+
+  func testProceduralCatThemesCoverEveryExpressionNineGazescapesAndReduceMotion() throws {
     let emotions: [CharacterEmotion?] = [nil] + CharacterEmotion.allCases.map(Optional.some)
     for direction in catDirections {
       for emotion in emotions {
@@ -528,15 +533,6 @@ final class CharacterCatTests: XCTestCase {
                 XCTAssertTrue(rendered.nodes.contains { $0.id == "eye.left" })
                 XCTAssertTrue(rendered.nodes.contains { $0.id == "eye.right" })
                 XCTAssertFalse(rendered.nodes.contains { $0.id == "eye.left.pupil" })
-              case .reference:
-                XCTAssertTrue(rendered.nodes.contains { $0.id.hasPrefix("reference.eyeLeft") })
-                XCTAssertTrue(rendered.nodes.contains { $0.id.hasPrefix("reference.eyeRight") })
-                let leftHasImage = rendered.nodes.contains { $0.id == "reference.irisLeft" }
-                let rightHasImage = rendered.nodes.contains { $0.id == "reference.irisRight" }
-                let leftClosed = rendered.nodes.contains { $0.id == "reference.eyeLeft.upper" }
-                let rightClosed = rendered.nodes.contains { $0.id == "reference.eyeRight.upper" }
-                XCTAssertTrue(leftHasImage || leftClosed)
-                XCTAssertTrue(rightHasImage || rightClosed)
               default:
                 XCTFail("Unexpected cat anatomy: \(direction.anatomy)")
               }
@@ -548,7 +544,7 @@ final class CharacterCatTests: XCTestCase {
     }
   }
 
-  func testThreeCatThemesRemainValidDuringBlinkAndInterruptedExpressionHandoffs() throws {
+  func testProceduralCatThemesRemainValidDuringBlinkAndInterruptedExpressionHandoffs() throws {
     let animationID = try CharacterAnimationID(validating: "cat-theme-blink")
     let blinkState = ReactiveCharacter.act(
       state: .idle, event: .animationStarted(id: animationID, animation: .blink)

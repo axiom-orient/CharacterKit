@@ -7,16 +7,12 @@ enum CharacterReferenceArtworkID: String, CaseIterable, Sendable {
   case mascotWhite = "mascot-white"
   case mascotBlack = "mascot-black"
   case mascotArcade = "mascot-arcade"
-  case norwegianHero = "norwegian-hero"
-  case norwegianWarm = "norwegian-warm"
-  case norwegianSilver = "norwegian-silver"
-  case norwegianCream = "norwegian-cream"
 }
 
 struct CharacterReferenceRig: Sendable {
   enum Part: String, Sendable {
     case body, headsetShell, headsetMetal, headsetCushions, headsetLight
-    case earLeft, earRight, mane, eyeLeft, eyeRight, irisLeft, irisRight, nose, mouth
+    case eyeLeft, eyeRight, mouth
 
     var isHardware: Bool {
       switch self {
@@ -24,8 +20,7 @@ struct CharacterReferenceRig: Sendable {
       default: false
       }
     }
-    var isIris: Bool { self == .irisLeft || self == .irisRight }
-    var isLeft: Bool { self == .eyeLeft || self == .irisLeft || self == .earLeft }
+    var isLeft: Bool { self == .eyeLeft }
   }
 
   struct Layer: Sendable {
@@ -46,12 +41,7 @@ struct CharacterReferenceRig: Sendable {
 enum CharacterReferenceMotionPolicy {
   static let minimumEyeScale = 0.035
   static let maximumEyeScale = 1.25
-  static let maximumEarAngle = 0.05
   static let maximumGazeX = 0.23
   static let maximumGazeY = 0.24
-  // The authored feline iris is nearly as wide as its socket. Large travel exposes
-  // unfinished underpainting and cuts the artwork at the registered frame edge.
-  static let catIrisTravelFraction = 0.045
   static let eyeTravelFraction = 0.085
-  static let earRootOverlap = 7.0
 }

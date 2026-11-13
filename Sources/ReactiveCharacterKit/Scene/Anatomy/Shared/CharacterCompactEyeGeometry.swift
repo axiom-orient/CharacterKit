@@ -49,13 +49,31 @@ enum CharacterCompactEyeGeometry {
     let heartBox = CharacterRect(
       x: center.x - heartSpan / 2, y: center.y - heartSpan * 0.47,
       width: heartSpan, height: heartSpan * 0.94)
+    // Inner-lid tension needs a wide downward cut to read at icon sizes. Merely
+    // compressing the vertical pill leaves a tiny bean that resembles a smile.
+    // This uses the shared contour channel and twelve-segment topology, so it
+    // remains continuous through gaze, blink and interrupted expressions.
+    let scowlWidth = span * 0.95
+    let scowlHeight = max(thickness * 1.5, height * 0.26)
+    let scowlBox = CharacterRect(x: center.x - scowlWidth / 2,
+      y: center.y - scowlHeight / 2, width: scowlWidth, height: scowlHeight)
+    let scowl = CharacterInkGeometry.capsule(in: scowlBox).mapped { p in
+      let inner = left ? (p.x - scowlBox.x) / scowlWidth
+        : (scowlBox.maxX - p.x) / scowlWidth
+      let vertical = (p.y - scowlBox.y) / scowlHeight
+      let top = scowlBox.y + inner * scowlHeight * 0.86
+      return .init(x: p.x, y: top + vertical * (scowlBox.maxY - top))
+    }
+    let tensioned = compressed.blended(to: scowl, amount: contour.innerPinch)
     let expressed =
-      compressed
+      tensioned
       .blended(to: smile, amount: contour.crescent)
       .blended(to: chevron, amount: contour.chevron)
       .blended(to: CharacterInkGeometry.heart(in: heartBox), amount: contour.heart)
+    let closedWidth = w + (scowlWidth - w) * contour.innerPinch
     let closedBox = CharacterRect(
-      x: center.x - w / 2, y: center.y - thickness / 2, width: w, height: thickness)
+      x: center.x - closedWidth / 2, y: center.y - thickness / 2,
+      width: closedWidth, height: thickness)
     let closed = CharacterInkGeometry.capsule(in: closedBox)
       .blended(to: smile, amount: contour.crescent)
       .blended(to: chevron, amount: contour.chevron)

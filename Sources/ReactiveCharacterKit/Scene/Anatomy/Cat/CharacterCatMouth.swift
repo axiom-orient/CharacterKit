@@ -97,19 +97,21 @@ extension CharacterCatDrawing {
     let active = pose.mouth.visible ? pose.mouth.opacity : 0
     let open = min(1, max(0, pose.mouth.openness * active))
     let curve = min(1, max(-1, pose.mouth.curvature * active))
-    let width = 12 + (pose.mouth.width - 0.68) * active * 20
+    let baseWidth = 12 + (pose.mouth.width - 0.68) * active * 20
     let x = 256.0
     let y = 405.0
     let frown = max(0, -curve)
     let smile = max(0, curve)
+    let width = baseWidth + frown * 14
+    let middleY = y - 2 - smile * 3 - frown * 7
+    let controlY = middleY + (9 + smile * 9) * (1 - frown)
+    let cornerY = y + 6 + frown * 6
     let cavityAmount = min(1, max(0, (open - 0.03) / 0.12))
     // The reference's tiny peaked muzzle, without a separate philtrum/nose.
     var lips = CharacterVectorPath()
-    lips.move(x - width, y + 6)
-    lips.quad(
-      x - width * 0.45, y + 7 + smile * 6 - frown * 28,
-      x, y - 2 - smile * 3 - frown * 13)
-    lips.quad(x + width * 0.45, y + 7 + smile * 6 - frown * 28, x + width, y + 6)
+    lips.move(x - width, cornerY)
+    lips.quad(x - width * 0.45, controlY, x, middleY)
+    lips.quad(x + width * 0.45, controlY, x + width, cornerY)
     add("mouth.lip", lips, stroke: ink, width: 5.6, opacity: 1 - cavityAmount)
     var cavity = CharacterVectorPath()
     cavity.move(x - width, y)

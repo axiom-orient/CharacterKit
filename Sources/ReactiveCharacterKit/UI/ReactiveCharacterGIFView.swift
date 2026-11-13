@@ -142,7 +142,12 @@
             reduceMotion: reduceMotion, cache: resources.frames) {
           image = reduceMotion ? authored : blend(authored, opacity: clip.opacity)
         } else { image = gifs.neutral }
-        return renderer.render(image, pose: sample.pose, speechWeight: sample.speechWeight)
+        let expressionWeight = sample.emotion.map { clip in
+          reduceMotion ? 1 : CharacterGIFPlayback.articulationWeight(elapsed: clip.elapsed,
+            duration: gifs.duration(for: clip.emotion)) * clip.opacity
+        } ?? 0
+        return try renderer.render(image, pose: sample.pose, speechWeight: sample.speechWeight,
+          emotion: sample.emotion?.emotion, expressionWeight: expressionWeight)
       }
       switch result {
       case .success(let image):

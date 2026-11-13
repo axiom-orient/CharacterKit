@@ -8,6 +8,14 @@ struct CharacterGIFPlayback {
     let opacity: Double
   }
 
+  /// Keep live mouth styling neutral on the shared first and last source frames.
+  static func articulationWeight(elapsed: Double, duration: Double) -> Double {
+    let edge = min(0.16, duration / 4)
+    let ramp = min(0.48, duration / 3)
+    let t = min(1, max(0, min(elapsed - edge, duration - edge - elapsed) / ramp))
+    return t * t * (3 - 2 * t)
+  }
+
   private struct Handoff {
     let sample: Sample
     let startedAt: Double

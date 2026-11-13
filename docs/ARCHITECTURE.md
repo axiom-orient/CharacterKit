@@ -37,19 +37,8 @@ An appearance chooses art, colors, components and default motion; it does not ow
 events, task state or a second clock. Shared pose and scene types allow renderers to
 reuse behavior without forcing every artwork family to use the same geometry. The
 minimal and portrait families use vector geometry; SEMI combines registered textures
-with vector features; reference mascots and Norwegian cats use authored image layers.
-
-The Norwegian reference art uses the quieter `companion` motion and `soft` handoff
-defaults. Its original body contains painted-over eye sockets and does not include
-closed-eye artwork. The reference adapter keeps the complete socket images visible,
-limits iris travel, and preserves the original texture across expressions. It does
-not currently render a blink or animated eyelids for this family; the semantic blink
-event and its timing still apply. Procedural cat eyes remain available to the separate
-animated and simple cat anatomies. Do not clip the reference socket with those vector
-apertures: doing so exposes the unfinished underpainting. Full-quality blink needs
-registered artwork for every coat and visual review of the transition. Hero source
-layers are 431×373 pixels; the other coats are around 220×232, so larger output does
-not create additional original detail.
+with vector features; reference mascots use authored image layers.
+The single Norwegian cat uses the GIF pipeline described below.
 
 The session keeps layer clocks across parameter-only updates. Voice amplitude retargets over 100 ms from the currently presented value. Task-progress gaze uses the existing gaze transition identity; explicit attention keeps ownership until its existing deadline. These display transitions do not delay semantic state or create a second task state. A semantic performance handoff samples the visible pose before clearing the prior scalar transition, so the newest voice state can take over. Reduce Motion applies the target immediately. Raw `ReactiveCharacter.pose` sampling remains deterministic and unsmoothed.
 
@@ -65,7 +54,11 @@ a finished clip returns to neutral while ongoing live input continues.
 
 `CharacterGIFRig` performs bounded texture articulation: it tracks the green iris and
 pink nose landmarks in each frame, warps only the eye interiors for gaze, and registers
-mouth/closed-eye patches from the existing joy and calm-trust clips. Mouth activation
+mouth patches from the existing emotion clips and per-eye blink patches from calm trust.
+Anger keeps its fangs, surprise and fatigue use round openings, and distressed
+expressions use the frowning source instead of a joyful mouth. A view retains only
+the currently selected speech texture pair. Speech styling eases through the common
+neutral boundary; it does not change the GIF clock or add semantic state. Mouth activation
 crossfades over 120 ms; the shared pose session smooths amplitude changes. Listening
 is silent. Whole-character action transforms reuse the shared pose. The host still
 executes animation completion effects and supplies observed lifecycle events.

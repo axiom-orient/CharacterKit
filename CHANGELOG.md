@@ -6,15 +6,30 @@ This working tree is a release candidate under development. The existing `1.0.0`
 
 ### Client migration
 
+- Remove the four layered Norwegian coats, `CharacterNorwegianVariant`,
+  `CharacterReferenceAppearance.norwegianForest`, and the obsolete
+  `catNorwegianForest` art-direction/style constants. Use
+  `ReactiveCharacterGIFView(state:)` for the single Norwegian character. Old
+  reference documents with kind `norwegianForest` now fail explicitly; select the
+  GIF view in the host instead of importing a coat. This is an intentional major-version break.
+
 - The SEMI-only development revision's `CharacterSceneBuilder.scene(pose:width:height:)`
   remains available. Select `.semi` explicitly for SwiftUI and use the SEMI art-direction
   pose/session overloads to retain that revision's SEMI defaults; the multi-character
   API's default view remains Black.
-- Handle `CharacterTheme.semi` and `CharacterAnatomy.semiDocumentCat` in exhaustive switches. Existing raw values and serialized design schemas are unchanged.
+- Handle `CharacterTheme.semi` and `CharacterAnatomy.semiDocumentCat` in exhaustive switches. Existing theme raw values and the CharacterDesign schema are unchanged.
 - Validated `CharacterArtDirection` configurations accept at most 16 image accessories, exposed as `maximumAccessoryCount`. Larger packs throw the existing `invalidValue` error with field `assets.accessories.count`.
 - Use `CharacterDesign.decode(_:)` and `CharacterReferenceDocument(data:)` for untrusted JSON. Generic Codable decoding is for trusted model exchange and does not enforce raw byte, depth or duplicate-member limits.
 
 ### Character and runtime
+
+- Make compact-cat anger legible with a wide inward-slanted eye silhouette and
+  downturned mouth corners. Reuse the shared compact-eye contour and preserve blink,
+  gaze and continuous expression transitions.
+
+- Give the single Norwegian GIF cat expression-aware speech: preserve angry fangs,
+  round surprise/yawn openings and distressed mouth shapes, with a shared neutral
+  speech pose at every clip boundary. Reuse existing textures with a bounded cache.
 
 - Add `ReactiveCharacterGIFView(state:playbackTrigger:accessibilityLabel:accessibilityValue:)`
   with twelve bundled Norwegian emotion clips plus live speech, gaze, blink and action
@@ -23,11 +38,6 @@ This working tree is a release candidate under development. The existing `1.0.0`
   existing authored frames and adds no image files. The emotion-only initializer remains.
 - Resolve secondary motion through the same active visual owner as the eyes after a
   one-shot expires, including when the host sends its completion event late.
-- Correct the reference Norwegian cat's mouth curvature so sad corners fall and happy
-  corners lift in scene coordinates; connect the open-mouth shape to the lip line.
-- Preserve authored Norwegian eye sockets rather than exposing unfinished underlying
-  artwork through cartoon-shaped clips. This family now uses restrained default motion;
-  until registered eyelids are available, blink does not visibly close its eyes.
 - Added SEMI as an anatomy within the existing pose/scene pipeline, with six registered textures and live vector face features.
 - Rebuilt SEMI mouth as closed line art only: rounded lip branches and a connected philtrum, including voice and surprise. No cavity or tongue is rendered.
 - Added six short animated whiskers: ordinary poses stay extended while angle, reach and staggered sway vary; strong distress or explicit impact/tremor may retract and ripple. Laugh/body energy no longer masquerades as impact. Reduce Motion and retarget continuity remain supported.

@@ -36,6 +36,16 @@
       let nose: CGPoint
     }
 
+    private struct SpeechTexture {
+      let emotion: CharacterEmotion
+      let open: Bitmap
+      let face: Face
+      let closed: Bitmap
+      let closedFace: Face
+    }
+
+    private let gifs: CharacterGIFSet
+    private var speechTexture: SpeechTexture?
     private let neutral: Bitmap
     private let speaking: Bitmap
     private let closedEyes: Bitmap
@@ -47,6 +57,7 @@
     private var cachedFace: Face?
 
     init(gifs: CharacterGIFSet) throws {
+      self.gifs = gifs
       neutral = Bitmap(gifs.neutral)
       speaking = Bitmap(try gifs.image(for: .joy, elapsed: gifs.duration(for: .joy) / 2,
         reduceMotion: false)!)
@@ -56,7 +67,8 @@
       speakingFace = Self.face(in: speaking)
     }
 
-    func render(_ image: CGImage, pose: CharacterPose, speechWeight: Double) -> CGImage {
+    func render(_ image: CGImage, pose: CharacterPose, speechWeight: Double,
+      emotion: CharacterEmotion? = nil, expressionWeight: Double = 0) throws -> CGImage {
       let gazeX = min(0.23, max(-0.23, (pose.eyes.left.centerX + pose.eyes.right.centerX) / 2 - 0.5))
       let gazeY = min(0.24, max(-0.24, (pose.eyes.left.centerY + pose.eyes.right.centerY) / 2 - 0.5))
       let blink = max(pose.eyes.left.blink, pose.eyes.right.blink)
@@ -83,11 +95,12 @@
           write(&output, x, y, source: source, sx: Double(x) - dx * weight,
             sy: Double(y) - dy * weight, opacity: 1)
         }
-        if blink > 0.001 {
+        let eyeBlink = side == 0 ? pose.eyes.left.blink : pose.eyes.right.blink
+        if eyeBlink > 0.001 {
           // Centers measured on the shared 288px calm-trust closed-eye artwork.
           let closedCenter = CGPoint(x: side == 0 ? 108 : 184, y: 132)
           visit(center: center, rx: 34, ry: 29, source: source) { x, y, r2 in
-            let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.35))) * blink
+            let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.35))) * eyeBlink
             write(&output, x, y, source: closedEyes,
               sx: Double(x) - center.x + closedCenter.x,
               sy: Double(y) - center.y + closedCenter.y, opacity: alpha)
@@ -96,30 +109,26 @@
       }
 
       if speechWeight > 0.001 {
-        let center = CGPoint(x: face.nose.x, y: face.nose.y + 15)
-        // The closed patch removes the clip's mouth before articulation; it never
-        // replaces eyes or broad fur regions. All seams lie in the white muzzle.
-        visit(center: center, rx: 35, ry: 24, source: source) { x, y, r2 in
-          let top = Self.smooth(min(1, max(0, (Double(y) - face.nose.y - 3) / 5)))
-          let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.45))) * top * speechWeight
-          write(&output, x, y, source: neutral,
-            sx: Double(x) - face.nose.x + neutralFace.nose.x,
-            sy: Double(y) - face.nose.y + neutralFace.nose.y, opacity: alpha)
-        }
-        let openness = min(1, max(0, pose.mouth.openness))
-        let articulation = max(0, openness - 0.10)
-        let openWeight = Self.smooth(min(1, articulation / 0.15))
-        let scaleY = 0.25 + articulation
-        let scaleX = 0.88 + min(1, pose.mouth.width) * 0.12
-        visit(center: center, rx: 33, ry: 24, source: source) { x, y, _ in
-          let u = (Double(x) - center.x) / scaleX
-          let v = (Double(y) - center.y) / scaleY
-          let r2 = u * u / (32 * 32) + v * v / (23 * 23)
-          let sy = speakingFace.nose.y + 19 + v
-          let top = Self.smooth(min(1, max(0, (sy - speakingFace.nose.y - 5) / 4)))
-          let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.45))) * top * speechWeight * openWeight
-          write(&output, x, y, source: speaking, sx: speakingFace.nose.x + u,
-            sy: sy, opacity: alpha)
+        let beforeMouth = output
+        paintMouth(&output, source: source, face: face, pose: pose, weight: speechWeight,
+          closed: neutral, closedFace: neutralFace, opened: speaking, openFace: speakingFace)
+        let mix = min(1, max(0, expressionWeight))
+        if let emotion, mix > 0.001 {
+          let texture = try texture(for: emotion)
+          var expressive = beforeMouth
+          paintMouth(&expressive, source: source, face: face, pose: pose, weight: speechWeight,
+            closed: texture.closed, closedFace: texture.closedFace,
+            opened: texture.open, openFace: texture.face)
+          // Both passes fully remove the old mouth. Blend their results, rather than
+          // stacking two partial masks that could leave a second mouth underneath.
+          let center = CGPoint(x: face.nose.x, y: face.nose.y + 15)
+          visit(center: center, rx: 35, ry: 24, source: source) { x, y, _ in
+            let i = (y * source.width + x) * 4
+            for c in 0..<4 {
+              output[i + c] = UInt8((Double(output[i + c]) * (1 - mix)
+                + Double(expressive[i + c]) * mix).rounded())
+            }
+          }
         }
       }
 
@@ -129,6 +138,65 @@
         bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue
           | CGBitmapInfo.byteOrder32Big.rawValue), provider: provider, decode: nil,
         shouldInterpolate: true, intent: .defaultIntent)!
+    }
+
+    private func paintMouth(_ output: inout [UInt8], source: Bitmap, face: Face,
+      pose: CharacterPose, weight: Double, closed: Bitmap, closedFace: Face,
+      opened: Bitmap, openFace: Face) {
+      let center = CGPoint(x: face.nose.x, y: face.nose.y + 15)
+      // The closed patch removes the clip's mouth before articulation; it never
+      // replaces eyes or broad fur regions. All seams lie in the white muzzle.
+      visit(center: center, rx: 35, ry: 24, source: source) { x, y, r2 in
+        let top = Self.smooth(min(1, max(0, (Double(y) - face.nose.y - 3) / 5)))
+        let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.45))) * top * weight
+        write(&output, x, y, source: closed,
+          sx: Double(x) - face.nose.x + closedFace.nose.x,
+          sy: Double(y) - face.nose.y + closedFace.nose.y, opacity: alpha)
+      }
+      let openness = min(1, max(0, pose.mouth.openness))
+      let articulation = max(0, openness - 0.10)
+      let openWeight = Self.smooth(min(1, articulation / 0.15))
+      let scaleY = 0.25 + articulation
+      let scaleX = 0.88 + min(1, pose.mouth.width) * 0.12
+      visit(center: center, rx: 33, ry: 24, source: source) { x, y, _ in
+        let u = (Double(x) - center.x) / scaleX
+        let v = (Double(y) - center.y) / scaleY
+        let r2 = u * u / (32 * 32) + v * v / (23 * 23)
+        let sy = openFace.nose.y + 19 + v
+        let top = Self.smooth(min(1, max(0, (sy - openFace.nose.y - 5) / 4)))
+        let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.45))) * top * weight * openWeight
+        write(&output, x, y, source: opened, sx: openFace.nose.x + u,
+          sy: sy, opacity: alpha)
+      }
+    }
+
+    private func texture(for emotion: CharacterEmotion) throws -> SpeechTexture {
+      if let speechTexture, speechTexture.emotion == emotion { return speechTexture }
+      let opening: CharacterEmotion
+      switch emotion {
+      case .joy, .affection, .gratitude, .calmTrust: opening = .joy
+      case .angerIrritation: opening = .angerIrritation
+      case .anxietyFear, .sadness, .shameGuilt, .disgustContempt: opening = .anxietyFear
+      case .interest: opening = .interest
+      case .surprise: opening = .surprise
+      case .fatigueBurden: opening = .fatigueBurden
+      }
+      let opened = Bitmap(try gifs.image(for: opening,
+        elapsed: gifs.duration(for: opening) / 2, reduceMotion: false)!)
+      let closed: Bitmap
+      switch emotion {
+      case .sadness, .shameGuilt, .disgustContempt, .affection, .gratitude, .calmTrust:
+        closed = Bitmap(try gifs.image(for: emotion,
+          elapsed: gifs.duration(for: emotion) / 2, reduceMotion: false)!)
+      case .angerIrritation, .anxietyFear:
+        closed = Bitmap(try gifs.image(for: .sadness,
+          elapsed: gifs.duration(for: .sadness) / 2, reduceMotion: false)!)
+      default: closed = neutral
+      }
+      let result = SpeechTexture(emotion: emotion, open: opened, face: Self.face(in: opened),
+        closed: closed, closedFace: Self.face(in: closed))
+      speechTexture = result
+      return result
     }
 
     private func visit(center: CGPoint, rx: Double, ry: Double, source: Bitmap,

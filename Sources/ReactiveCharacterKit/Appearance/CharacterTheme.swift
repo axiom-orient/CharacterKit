@@ -175,8 +175,6 @@ extension CharacterArtDirection {
     } catch { preconditionFailure("Invalid built-in simple 2D cat art direction: \(error)") }
   }()
 
-  /// Norwegian Forest Cat breed variant. Emotion and motion contracts are unchanged.
-  public static let catNorwegianForest: Self = .reference(.norwegianForest(.hero))
 
 }
 
@@ -199,21 +197,4 @@ extension CharacterStyle {
     } catch { preconditionFailure("Invalid built-in Simple 2D cat style: \(error)") }
   }()
 
-  /// Procedural feature palette over the authored warm, silver or cream Norwegian coat.
-  public static let catNorwegianForest: Self = {
-    do {
-      return try Self(
-        partColors: CharacterPartColors(
-          surface: CharacterColor(red: 0.095, green: 0.098, blue: 0.12),
-          eyes: CharacterColor(red: 0.50, green: 0.72, blue: 0.27),
-          nose: CharacterColor(red: 0.69, green: 0.41, blue: 0.44),
-          mouth: CharacterColor(red: 0.37, green: 0.17, blue: 0.13),
-          mouthDetail: CharacterColor(red: 0.98, green: 0.96, blue: 0.93),
-          tongue: CharacterColor(red: 0.85, green: 0.44, blue: 0.49),
-          writing: CharacterColor(red: 0.50, green: 0.72, blue: 0.27),
-          accent: CharacterColor(red: 0.63, green: 0.66, blue: 0.72)),
-        eyeTreatment: .vertical, mouthTreatment: .filled,
-        lineWidth: 0.009)
-    } catch { preconditionFailure("Invalid built-in Norwegian Forest Cat style: \(error)") }
-  }()
 }

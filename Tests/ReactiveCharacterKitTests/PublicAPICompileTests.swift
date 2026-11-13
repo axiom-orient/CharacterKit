@@ -200,7 +200,7 @@ extension PublicAPICompileTests {
     XCTAssertEqual(direction.anatomy, .minimal)
     for anatomy in [
       CharacterAnatomy.cat(.animated), .cat(.simple2D),
-      .reference(.norwegianForest(.hero)), .reference(.mascot(variant: .hero)), .portrait(.cappedBoy),
+      .reference(.mascot(variant: .hero)), .portrait(.cappedBoy),
     ] {
       let selected = try CharacterArtDirection(name: "Selected", anatomy: anatomy)
       XCTAssertEqual(selected.anatomy, anatomy)

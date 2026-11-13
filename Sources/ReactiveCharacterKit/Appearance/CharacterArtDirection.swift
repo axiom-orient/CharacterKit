@@ -145,12 +145,12 @@ public struct CharacterArtDirection: Sendable, Equatable {
       .mascot(variant: variant, body: body, headset: nil)
     } else { appearance }
     return Self(
-      uncheckedName: appearance.isCat ? "Norwegian Forest Cat" : "Reference Mascot",
+      uncheckedName: "Reference Mascot",
       components: components, layout: .standard,
-      style: appearance.isCat ? .catNorwegianForest : .black,
+      style: .black,
       surface: .visible, projection: .flat,
-      motionProfile: appearance.isCat ? .companion : .cartoon,
-      transitionProfile: appearance.isCat ? .soft : .cartoon,
+      motionProfile: .cartoon,
+      transitionProfile: .cartoon,
       assets: .empty, featureGlow: 0, ornamentGlow: 0,
       contentInset: 0, anatomy: .reference(appearance))
   }

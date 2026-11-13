@@ -43,40 +43,17 @@ struct CharacterReferenceDrawing {
       guard let asset = appearance.asset(for: part) else { continue }
       let id = "reference.\(part.part.rawValue)"
       switch part.part {
-      case .body, .mane, .earLeft, .earRight:
+      case .body:
         guard direction.surface == .visible else { continue }
-        var local = CharacterSceneTransform.identity
-        let stage: CharacterSceneLayer = part.part == .body ? .surface : .behindSurface
-        if part.part == .earLeft || part.part == .earRight {
-          let left = part.part.isLeft
-          let contour = left ? pose.eyeContours.left : pose.eyeContours.right
-          let sign = left ? -1.0 : 1.0
-          let desired = sign * (contour.lidCompression * 0.08 + contour.innerPinch * 0.10
-            - contour.circular * 0.05) + pose.face.gazeX * 0.12
-          let limit = CharacterReferenceMotionPolicy.maximumEarAngle
-          local = .around(x: part.pivotX, y: part.pivotY, angle: min(limit, max(-limit, desired)))
-          // A fixed, source-authored root covers the seam while only the pinna rotates.
-          image(
-            id + ".root", asset: asset, layer: stage,
-            clips: [.rectangle(.init(
-              x: 0, y: part.pivotY - CharacterReferenceMotionPolicy.earRootOverlap,
-              width: whole.width, height: whole.height - part.pivotY
-                + CharacterReferenceMotionPolicy.earRootOverlap))])
-        }
-        image(id, asset: asset, layer: stage, local: local)
+        image(id, asset: asset, layer: .surface)
       case .headsetShell, .headsetMetal, .headsetCushions, .headsetLight:
         guard direction.components.contains(.accessories) else { continue }
         image(id, asset: asset, layer: .behindFeatures)
-      case .eyeLeft, .eyeRight, .irisLeft, .irisRight:
+      case .eyeLeft, .eyeRight:
         guard direction.components.contains(.eyes) else { continue }
         let eye = part.part.isLeft ? pose.eyes.left : pose.eyes.right
         let neutral = part.part.isLeft ? rest.eyes.left : rest.eyes.right
         let contour = part.part.isLeft ? pose.eyeContours.left : pose.eyeContours.right
-        if appearance.isCat {
-          result += catEyeNodes(part: part, asset: asset, pose: pose,
-            treatment: direction.style.eyeTreatment, whole: whole, base: base)
-          continue
-        }
         let gazeX = bounded(pose.face.gazeX / CharacterReferenceMotionPolicy.maximumGazeX)
         let gazeY = bounded(pose.face.gazeY / CharacterReferenceMotionPolicy.maximumGazeY)
         let blinkScale = max(CharacterReferenceMotionPolicy.minimumEyeScale, 1 - eye.blink)
@@ -84,7 +61,6 @@ struct CharacterReferenceDrawing {
           max(0.35, eye.unblinkedHeight / max(0.001, neutral.unblinkedHeight)))
         let scaleY = blinkScale * shapeScale
         let scaleX = min(1.15, max(0.8, eye.unblinkedWidth / max(0.001, neutral.unblinkedWidth)))
-        // Cat sockets/irises were handled above; this path owns only the round mascot eyes.
         let travel = CharacterReferenceMotionPolicy.eyeTravelFraction
         let local = CharacterSceneTransform.around(
           x: part.pivotX, y: part.pivotY, angle: eye.angle - neutral.angle,
@@ -104,17 +80,8 @@ struct CharacterReferenceDrawing {
         } else {
           image(id, asset: asset, layer: .features, local: local)
         }
-      case .nose:
-        guard direction.components.contains(.nose) else { continue }
-        image(id, asset: asset, layer: .features)
       case .mouth:
         guard direction.components.contains(.mouth) else { continue }
-        if appearance.isCat, pose.mouth.visible, pose.mouth.opacity > 0 {
-          image(id, asset: asset, layer: .features, opacity: 1 - pose.mouth.opacity)
-          result += catMouthNodes(frame: part.frame, mouth: pose.mouth, transform: base,
-            colors: direction.style.partColors)
-          continue
-        }
         if !pose.mouth.visible || pose.mouth.opacity <= 0 {
           image(id, asset: asset, layer: .features)
         } else {
@@ -147,75 +114,6 @@ struct CharacterReferenceDrawing {
       }
     }
     return result
-  }
-
-  private static func catEyeNodes(
-    part: CharacterReferenceRig.Layer, asset: CharacterImageAsset,
-    pose: CharacterPose, treatment: CharacterEyeTreatment,
-    whole: CharacterRect, base: CharacterSceneTransform
-  ) -> [CharacterSceneNode] {
-    let frame = part.frame
-    // The source body has painted-over eye sockets, not usable eyelid artwork.
-    // Keep the authored socket intact in every expression; clipping it to a cartoon
-    // aperture reveals those unfinished pixels. Gaze moves only the iris inside it.
-    var bounds = whole
-    var local = CharacterSceneTransform.identity
-    if part.part.isIris {
-      bounds = .init(
-        x: bounded(pose.face.gazeX / CharacterReferenceMotionPolicy.maximumGazeX)
-          * frame.width * CharacterReferenceMotionPolicy.catIrisTravelFraction,
-        y: bounded(pose.face.gazeY / CharacterReferenceMotionPolicy.maximumGazeY)
-          * frame.height * CharacterReferenceMotionPolicy.catIrisTravelFraction,
-        width: whole.width, height: whole.height)
-      let shape: (Double, Double) = switch treatment {
-      case .vertical: (1, 1)
-      case .round: (1, 0.90)
-      case .horizontal: (1.04, 0.80)
-      }
-      local = .around(x: frame.midX, y: frame.midY, scaleX: shape.0, scaleY: shape.1)
-    }
-    return [.init(id: "reference.\(part.part.rawValue)", layer: .features,
-      path: .init(), fill: nil, stroke: nil, lineWidth: 0, opacity: 1,
-      transform: base.concatenating(local), clips: [.rectangle(frame)],
-      image: .init(asset: asset, bounds: .init(bounds), contentMode: .fit))]
-  }
-
-  private static func catMouthNodes(
-    frame: CharacterRect, mouth: CharacterMouthPose, transform: CharacterSceneTransform,
-    colors: CharacterPartColors
-  ) -> [CharacterSceneNode] {
-    let x = frame.midX + mouth.skew * frame.width * 0.08
-    let y = frame.y + frame.height * 0.14
-    let width = frame.width * min(0.33, max(0.20, mouth.width * 0.40))
-    // Scene coordinates grow downward: positive expression curvature lifts the
-    // corners, while negative curvature lowers them for a frown.
-    let bend = -mouth.curvature * frame.height * 0.15
-    let controlY = y + frame.height * (0.18 - max(0, -mouth.curvature) * 0.30)
-    var outline = CharacterVectorPath()
-    outline.move(x, frame.y - frame.height * 0.05)
-    outline.line(x, y)
-    outline.move(x - width, y + bend)
-    outline.quad(x - width * 0.45, controlY, x, y)
-    outline.quad(x + width * 0.45, controlY,
-      x + width, y + bend)
-    var nodes: [CharacterSceneNode] = []
-    if mouth.openness > 0.06 {
-      let halfOpening = width * 0.38
-      let depth = frame.height * min(0.32, mouth.openness * 0.55)
-      var opening = CharacterVectorPath()
-      opening.move(x - halfOpening, y)
-      opening.quad(x, y + depth * 0.20, x + halfOpening, y)
-      opening.quad(x + halfOpening * 0.75, y + depth, x, y + depth)
-      opening.quad(x - halfOpening * 0.75, y + depth, x - halfOpening, y)
-      opening.close()
-      nodes.append(.init(id: "reference.mouth.open", layer: .features,
-        path: opening, fill: .solid(colors.mouth), stroke: nil, lineWidth: 0,
-        opacity: mouth.opacity, transform: transform, clips: []))
-    }
-    nodes.append(CharacterSceneNode(id: "reference.mouth.articulated", layer: .features,
-      path: outline, fill: nil, stroke: colors.mouth, lineWidth: max(0.55, frame.width * 0.013),
-      opacity: mouth.opacity, transform: transform, clips: []))
-    return nodes
   }
 
   private static func bounded(_ value: Double) -> Double { min(1, max(-1, value)) }

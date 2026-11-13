@@ -92,7 +92,7 @@ struct CharacterBadge: View {
 Public API additions and input-budget changes are listed in [client migration](CHANGELOG.md).
 
 `CharacterTheme` provides `.black`, `.white`, `.arcade`, `.cat`, and `.semi`.
-Additional art directions include `.catSimple2D`, `.catNorwegianForest`, and portrait
+Additional art directions include `.catSimple2D` and portrait
 styles. The host can replace the theme without replacing its semantic state. For SEMI,
 pass `.semi` explicitly; the default `ReactiveCharacterView(state:)` uses Black.
 
@@ -118,11 +118,6 @@ to neutral; ordinary voice or gaze updates never restart the GIF. Listening inpu
 does not articulate the mouth. The `emotion:` initializer remains available for
 emotion-only callers. `ReactiveCharacterView` remains the renderer for basic and human characters.
 See [GIF asset preparation](Tools/Norwegian/README.md) for the source and build contract.
-
-The older Norwegian reference coats retain their authored eye textures and use restrained
-motion. Their current source art has no closed-eye layers, so blink events do not
-visually close those eyes. The hero source is 431×373 pixels and the other coats are
-about 220×232 pixels. See [appearance boundaries](docs/ARCHITECTURE.md#appearance-and-motion-boundaries).
 
 The short-lived SEMI-only `main` revision used SEMI as its implicit view and pose
 configuration. When moving from that revision, select `theme: .semi` in the view and
@@ -168,16 +163,16 @@ For a native macOS consumer with emotion, speech, task lifecycle, animation, and
 ./script/build_and_run.sh --build-only
 ```
 
-The demo exposes the bundled appearances, including the four Norwegian coats and
-portrait variants, through the public art-direction API. It injects observed events
+The demo exposes the bundled appearances, including one Norwegian GIF cat and
+portrait variants, through the public SDK views. It injects observed events
 into the SDK; it does not run an agent or a network operation. Its host owns semantic
 state and animation-end tasks, cancels obsolete tasks, and sends completion
 observations back through the reducer.
 
-Choose **모든 캐릭터 비교·시연** to compare all 17 real SDK views with the same
+Choose **모든 캐릭터 비교·시연** to compare all 13 real SDK views with the same
 inputs. The showcase records 12 emotions, speech levels, four gaze targets, listening,
-task progress and eight actions into a new temporary folder. It labels known legacy
-eyelid limits; the recording is functional visual evidence, not a frame-performance test.
+task progress and eight actions into a new temporary folder. It also records all twelve
+emotions combined with speech and attention. The recording is functional visual evidence, not a frame-performance test.
 Encode its captured frames into a video and a phase-navigation page with FFmpeg:
 
 ```sh

@@ -123,10 +123,7 @@ struct CharacterPreview {
     }
     let directions: [(String, CharacterArtDirection)] = [
       ("semi", .semiDocumentCat), ("black", .black), ("white", .white), ("arcade", .arcade), ("cat", .cat),
-      ("cat-simple", .catSimple2D), ("norwegian", .catNorwegianForest),
-      ("norwegian-warm", .reference(.norwegianForest(.warmTabby))),
-      ("norwegian-silver", .reference(.norwegianForest(.silver))),
-      ("norwegian-cream", .reference(.norwegianForest(.creamBrown))),
+      ("cat-simple", .catSimple2D),
       ("portrait", .portrait), ("girl", CharacterPortraitStyle.bobGirl.artDirection),
       ("flower-girl", CharacterPortraitStyle.flowerGirl.artDirection),
       ("boy", CharacterPortraitStyle.shortHairBoy.artDirection),

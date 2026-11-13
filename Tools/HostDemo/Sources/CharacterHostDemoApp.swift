@@ -9,6 +9,6 @@ struct CharacterHostDemoApp: App {
     Window("All characters", id: "all-characters") {
       CharacterShowcaseView()
     }
-    .defaultSize(width: 1144, height: 946)
+    .defaultSize(width: 1144, height: 746)
   }
 }

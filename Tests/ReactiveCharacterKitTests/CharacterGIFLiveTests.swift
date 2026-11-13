@@ -43,7 +43,8 @@
 
     func testActionsExpireWithoutDroppingSpeechOrAttentionAndReducedMotionIsStatic() throws {
       let gifs = try CharacterGIFSet.norwegianForest.get()
-      var state = send(.voiceLevelChanged(0.8), to: send(.voiceStarted))
+      var state = send(.emotionChanged(.angerIrritation),
+        to: send(.voiceLevelChanged(0.8), to: send(.voiceStarted)))
       state = send(.attentionFocused(try CharacterPoint(validatingX: 0, y: 0.5)), to: state)
       for action in CharacterAnimation.allCases {
         let acting = send(.animationStarted(id: CharacterAnimationID(UUID()), animation: action), to: state)
@@ -84,7 +85,7 @@
       if let directory { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
       for (name, state, speech, time) in samples {
         let pose = ReactiveCharacter.pose(state: state, elapsed: time, projection: .flat, motionProfile: .companion)
-        let image = rig.render(gifs.neutral, pose: pose, speechWeight: speech)
+        let image = try rig.render(gifs.neutral, pose: pose, speechWeight: speech)
         let pixels = CharacterGIFRig.Bitmap(image).pixels
         for i in stride(from: 3, to: pixels.count, by: 4) {
           XCTAssertEqual(pixels[i], baseline.pixels[i], "Silhouette: \(name)")
@@ -94,6 +95,7 @@
       }
       for emotion in CharacterEmotion.allCases {
         let image = try XCTUnwrap(gifs.image(for: emotion, elapsed: 0.96, reduceMotion: false))
+        if let directory { try save(image, to: directory.appendingPathComponent("emotion-\(emotion.rawValue)-authored.png")) }
         let bitmap = CharacterGIFRig.Bitmap(image)
         let landmarks = CharacterGIFRig.face(in: bitmap)
         let eyes = landmarks.eyes.compactMap { $0 }
@@ -104,8 +106,53 @@
         }
         let state = send(.voiceLevelChanged(0.8), to: send(.voiceStarted))
         let pose = ReactiveCharacter.pose(state: state, elapsed: 0.5, projection: .flat, motionProfile: .companion)
-        let articulated = rig.render(image, pose: pose, speechWeight: 1)
-        if let directory { try save(articulated, to: directory.appendingPathComponent("emotion-\(emotion.rawValue)-voice.png")) }
+        let articulated = try rig.render(image, pose: pose, speechWeight: 1,
+          emotion: emotion, expressionWeight: 1)
+        if let directory {
+          try save(articulated, to: directory.appendingPathComponent("emotion-\(emotion.rawValue)-voice.png"))
+          for level in [0.0, 1.0] {
+            let speakingState = send(.voiceLevelChanged(level), to: send(.voiceStarted))
+            let speakingPose = ReactiveCharacter.pose(state: speakingState, elapsed: 0.5,
+              projection: .flat, motionProfile: .companion)
+            let output = try rig.render(image, pose: speakingPose, speechWeight: 1,
+              emotion: emotion, expressionWeight: 1)
+            try save(output, to: directory.appendingPathComponent("emotion-\(emotion.rawValue)-voice-\(level).png"))
+          }
+        }
+      }
+    }
+
+    func testSpeechKeepsExpressionStyleAndSharesNeutralBoundaries() throws {
+      let gifs = try CharacterGIFSet.norwegianForest.get()
+      let rig = try CharacterGIFRig(gifs: gifs)
+      let state = send(.voiceLevelChanged(0.8), to: send(.voiceStarted))
+      let pose = ReactiveCharacter.pose(state: state, elapsed: 0.5,
+        projection: .flat, motionProfile: .companion)
+      let neutralSpeech = try rig.render(gifs.neutral, pose: pose, speechWeight: 1)
+      let baseline = CharacterGIFRig.Bitmap(neutralSpeech).pixels
+      for emotion in CharacterEmotion.allCases {
+        let duration = gifs.duration(for: emotion)
+        // The authored first/last neutral frames must use the same live mouth,
+        // even when the host keeps the emotion and voice active.
+        for time in [0.0, 0.16, duration - 0.16, duration] {
+          let weight = CharacterGIFPlayback.articulationWeight(elapsed: time, duration: duration)
+          XCTAssertEqual(weight, 0, accuracy: 1e-12)
+          let boundary = try rig.render(gifs.neutral, pose: pose, speechWeight: 1,
+            emotion: emotion, expressionWeight: weight)
+          XCTAssertEqual(CharacterGIFRig.Bitmap(boundary).pixels, baseline, emotion.rawValue)
+        }
+        let image = try XCTUnwrap(gifs.image(for: emotion, elapsed: duration / 2, reduceMotion: false))
+        let original = CharacterGIFRig.Bitmap(image)
+        let styled = try rig.render(image, pose: pose, speechWeight: 1,
+          emotion: emotion, expressionWeight: 1)
+        let pixels = CharacterGIFRig.Bitmap(styled).pixels
+        for i in stride(from: 3, to: pixels.count, by: 4) {
+          XCTAssertEqual(pixels[i], original.pixels[i], "Expression silhouette: \(emotion.rawValue)")
+        }
+        if [.angerIrritation, .sadness, .anxietyFear, .surprise, .fatigueBurden].contains(emotion) {
+          let generic = try rig.render(image, pose: pose, speechWeight: 1)
+          XCTAssertNotEqual(pixels, CharacterGIFRig.Bitmap(generic).pixels, emotion.rawValue)
+        }
       }
     }
 

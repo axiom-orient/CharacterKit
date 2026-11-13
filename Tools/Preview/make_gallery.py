@@ -54,7 +54,7 @@ const groups=__FRAME_DATA__;
 const $=id=>document.getElementById(id), themes=groups.filter(x=>x.kind==='emotions'), motions=groups.filter(x=>x.kind==='motion');
 const first=groups[0].frames[0].path;
 $('backend').textContent=first.endsWith('.svg')?'검증 경로: SDK의 실제 SVG를 브라우저에서 표시합니다. SwiftUI Canvas·ImageRenderer·실기기 접근성 검증은 이 화면으로 대체되지 않습니다.':'검증 경로: SDK의 네이티브 PNG 출력입니다. 화면 조작·VoiceOver·에너지 검증까지 완료했다는 뜻은 아닙니다.';
-const names={semi:'SEMI 문서 고양이',black:'Black',white:'White',arcade:'Arcade',cat:'Animated Cat','cat-simple':'Simple Cat',norwegian:'Norwegian Forest',portrait:'Portrait',girl:'Bob Girl','flower-girl':'Flower Girl',boy:'Short Hair Boy','capped-boy':'Capped Boy','boy-three-quarter':'Three-quarter Boy'};
+const names={semi:'SEMI 문서 고양이',black:'Black',white:'White',arcade:'Arcade',cat:'Animated Cat','cat-simple':'Simple Cat',portrait:'Portrait',girl:'Bob Girl','flower-girl':'Flower Girl',boy:'Short Hair Boy','capped-boy':'Capped Boy','boy-three-quarter':'Three-quarter Boy'};
 for(const g of themes){const o=new Option(names[g.id]||g.label,g.id);$('theme').add(o)}
 for(const g of motions)$('motion').add(new Option(g.label,g.id));
 function showTheme(){const g=themes.find(x=>x.id===$('theme').value);$('emotions').replaceChildren(...g.frames.map(f=>{const card=document.createElement('figure');card.className='card';const im=document.createElement('img');im.src=f.path;im.alt=f.label;im.loading='lazy';const caption=document.createElement('figcaption');caption.textContent=f.label;card.append(im,caption);return card}))}

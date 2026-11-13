@@ -123,7 +123,7 @@ final class CharacterPortraitTests: XCTestCase {
     XCTAssertLessThan(sad.brows.left.angle, 0)
     XCTAssertGreaterThan(sad.brows.right.angle, 0)
     for direction in [
-      CharacterArtDirection.black, .white, .arcade, .cat, .catSimple2D, .catNorwegianForest,
+      CharacterArtDirection.black, .white, .arcade, .cat, .catSimple2D,
     ] {
       let value = try CharacterSceneBuilder.scene(
         pose: angry, artDirection: direction, width: 160, height: 160)

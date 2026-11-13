@@ -152,17 +152,8 @@ struct HostDemoView: View {
 
   private var characterPanel: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Group {
-        if appearance == .norwegianGIF {
-          ReactiveCharacterGIFView(state: semanticState,
-            playbackTrigger: gifPlaybackTrigger, accessibilityLabel: "Character preview",
-            accessibilityValue: stateSummary)
-        } else {
-          ReactiveCharacterView(
-            state: semanticState, artDirection: appearance.direction,
-            accessibilityLabel: "Character preview", accessibilityValue: stateSummary)
-        }
-      }
+      appearance.view(state: semanticState, playbackTrigger: gifPlaybackTrigger,
+        accessibilityLabel: "Character preview", accessibilityValue: stateSummary)
       .frame(width: 300, height: 300)
       .id(characterIdentity)
       .characterReduceMotion(reduceMotion)

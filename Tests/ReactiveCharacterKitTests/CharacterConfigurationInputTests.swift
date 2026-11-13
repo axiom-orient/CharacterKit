@@ -51,6 +51,15 @@ final class CharacterConfigurationInputTests: XCTestCase {
     }
   }
 
+  func testRetiredNorwegianCoatsFailInsteadOfSelectingAnotherCharacter() {
+    for variant in ["hero", "warmTabby", "silver", "creamBrown"] {
+      let json = """
+        {"schema":"character-reference/1","appearance":{"kind":"norwegianForest","variant":"\(variant)"}}
+        """
+      XCTAssertThrowsError(try CharacterReferenceDocument(data: Data(json.utf8)))
+    }
+  }
+
   func testDesignDuplicateGuardCannotBeBypassedByUnicodeEncoding() throws {
     let design = try CharacterDesign.load(.black)
     let json = String(decoding: try design.encodedProfile(), as: UTF8.self)
