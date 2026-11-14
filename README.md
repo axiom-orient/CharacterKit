@@ -39,8 +39,10 @@ rejects stale identities; it never starts a chat request, audio recording or age
 
 ## Appearances and speech
 
-`CharacterTheme` includes `.black`, `.white`, `.arcade`, `.cat` and `.semi`. Additional
-art directions include `.catSimple2D` and portrait styles. The default view uses Black.
+`CharacterTheme` includes `.black`, `.white`, `.arcade`, `.cat` and `.semi`. Black, White and Arcade configure the same headset anatomy; they are palette choices,
+not separate characters. Additional art directions include `.catSimple2D` and portrait
+styles. `CharacterPortraitStyle` configures hair, accessories, eyewear and supported
+viewpoints on the shared portrait system. The default view uses Black.
 
 Use `ReactiveCharacterGIFView(state:playbackTrigger:)` for the single Norwegian cat.
 Its twelve emotion clips start/end on identical neutral pixels. Increment the trigger
