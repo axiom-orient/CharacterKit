@@ -60,6 +60,8 @@
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.characterReducedMotion) private var hostReduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.characterSpeechArticulation) private var speechArticulation
+    @State private var speechPresentation = CharacterSpeechPresentation()
     @State private var presentation: CharacterGIFPresentation
     @StateObject private var resources: CharacterGIFRenderResources
     @State private var reducedSampleTime: Double
@@ -88,6 +90,8 @@
           }
         }
       }
+      .onAppear { speechPresentation.update(speechArticulation, at: CharacterPresentationTime.now) }
+      .onChange(of: speechArticulation) { speechPresentation.update($0, at: CharacterPresentationTime.now) }
       .onChange(of: Input(state: state, trigger: playbackTrigger, reduceMotion: reduceMotion)) { input in
         let now = CharacterPresentationTime.now
         presentation.update(state: input.state, at: now, reduceMotion: input.reduceMotion,
@@ -146,7 +150,9 @@
           reduceMotion ? 1 : CharacterGIFPlayback.articulationWeight(elapsed: clip.elapsed,
             duration: gifs.duration(for: clip.emotion)) * clip.opacity
         } ?? 0
-        return try renderer.render(image, pose: sample.pose, speechWeight: sample.speechWeight,
+        let pose = state.communication.requestsMouth
+          ? speechPresentation.apply(to: sample.pose, at: time, reduceMotion: reduceMotion) : sample.pose
+        return try renderer.render(image, pose: pose, speechWeight: sample.speechWeight,
           emotion: sample.emotion?.emotion, expressionWeight: expressionWeight)
       }
       switch result {

@@ -1,4 +1,3 @@
-import AppKit
 import ReactiveCharacterKit
 import SwiftUI
 
@@ -19,24 +18,11 @@ struct CharacterShowcaseView: View {
         Spacer()
         Text(model.message).font(.caption).textSelection(.enabled)
       }
-      ShowcaseCaptureSurface(model: model)
+      CharacterCaptureSurface(controller: model.capture, content: CharacterShowcaseGrid(model: model))
         .frame(width: 1120, height: 700)
     }
     .padding(12)
     .frame(width: 1144, height: 746)
-  }
-}
-
-private struct ShowcaseCaptureSurface: NSViewRepresentable {
-  @ObservedObject var model: CharacterShowcaseModel
-
-  func makeNSView(context: Context) -> NSHostingView<CharacterShowcaseGrid> {
-    let view = NSHostingView(rootView: CharacterShowcaseGrid(model: model))
-    model.captureView = view
-    return view
-  }
-  func updateNSView(_ view: NSHostingView<CharacterShowcaseGrid>, context: Context) {
-    model.captureView = view
   }
 }
 
@@ -85,7 +71,7 @@ private final class CharacterShowcaseModel: ObservableObject {
   @Published var phase = "기본 표정"
   @Published var message = "실제 SwiftUI 렌더러를 한 화면에서 비교합니다"
   @Published var running = false
-  weak var captureView: NSView?
+  let capture = CharacterCaptureController()
   private var task: Task<Void, Never>?
   private var output: URL?
   private var frameNumber = 0
@@ -96,7 +82,7 @@ private final class CharacterShowcaseModel: ObservableObject {
   func saveCurrent() {
     do {
       let directory = try directory()
-      try capture(to: directory.appendingPathComponent("overview.png"))
+      try capture.save(to: directory.appendingPathComponent("overview.png"))
       message = directory.path
     } catch { message = "저장 실패: \(error.localizedDescription)" }
   }
@@ -108,7 +94,7 @@ private final class CharacterShowcaseModel: ObservableObject {
         let output = try directory()
         state = .idle; phase = "기본 표정"
         try await Task.sleep(nanoseconds: 300_000_000)
-        try capture(to: output.appendingPathComponent("overview.png"))
+        try capture.save(to: output.appendingPathComponent("overview.png"))
         let phases = Self.phases
         for item in phases {
           try Task.checkCancellation()
@@ -135,7 +121,7 @@ private final class CharacterShowcaseModel: ObservableObject {
             // Capture after the host input has propagated through the native view graph.
             try await Task.sleep(nanoseconds: 25_000_000)
             let filename = String(format: "frame-%05d.png", frameNumber)
-            try capture(to: output.appendingPathComponent(filename))
+            try capture.save(to: output.appendingPathComponent(filename))
             observations.append(["frame": filename, "phase": item.label,
               "secondsInPhase": seconds, "captureUptime": ProcessInfo.processInfo.systemUptime,
               "emotion": state.emotion?.rawValue ?? "none"])
@@ -168,20 +154,6 @@ private final class CharacterShowcaseModel: ObservableObject {
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     output = url
     return url
-  }
-
-  private func capture(to url: URL) throws {
-    guard let view = captureView, let layer = view.layer,
-      let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1120, pixelsHigh: 700,
-        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
-      let context = NSGraphicsContext(bitmapImageRep: rep)?.cgContext
-    else { throw CocoaError(.coderInvalidValue) }
-    context.translateBy(x: 0, y: 700)
-    context.scaleBy(x: 1, y: -1)
-    (layer.presentation() ?? layer).render(in: context)
-    guard let data = rep.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
-    try data.write(to: url, options: .atomic)
   }
 
   private enum Kind { case ordinary, voice, listening, writing }

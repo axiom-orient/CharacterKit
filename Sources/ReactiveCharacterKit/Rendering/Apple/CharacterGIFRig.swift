@@ -157,7 +157,7 @@
       let articulation = max(0, openness - 0.10)
       let openWeight = Self.smooth(min(1, articulation / 0.15))
       let scaleY = 0.25 + articulation
-      let scaleX = 0.88 + min(1, pose.mouth.width) * 0.12
+      let scaleX = 0.45 + min(1, pose.mouth.width) * 0.75
       visit(center: center, rx: 33, ry: 24, source: source) { x, y, _ in
         let u = (Double(x) - center.x) / scaleX
         let v = (Double(y) - center.y) / scaleY

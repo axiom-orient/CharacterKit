@@ -8,12 +8,15 @@ let package = Package(
     .macOS(.v13),
   ],
   products: [
+    .library(name: "CharacterChat", targets: ["CharacterChat"]),
     .library(
       name: "ReactiveCharacterKit",
       targets: ["ReactiveCharacterKit"]
     ),
   ],
   targets: [
+    .target(name: "CharacterChat", dependencies: ["ReactiveCharacterKit"],
+      swiftSettings: [.swiftLanguageMode(.v6)]),
     .target(
       name: "ReactiveCharacterKit",
       resources: [
@@ -25,7 +28,7 @@ let package = Package(
     ),
     .testTarget(
       name: "ReactiveCharacterKitTests",
-      dependencies: ["ReactiveCharacterKit"],
+      dependencies: ["ReactiveCharacterKit", "CharacterChat"],
       resources: [
         .process("Resources")
       ],

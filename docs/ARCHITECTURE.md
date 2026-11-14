@@ -70,6 +70,30 @@ expression, suppresses action travel and ambient motion, and still responds to e
 input and completion deadlines. Inactive scenes pause rendering. Resource tests retain
 the common canvas and exact neutral boundary contract for all twelve files.
 
+## Chat and timed speech
+
+`CharacterChat` is an optional host adapter product. It owns bounded text segmentation,
+explicit/heuristic emotion selection and a pure speech track. It imports the rendering
+SDK; the rendering SDK never imports it or reads dialogue. Explicit host/model emotion
+wins over local rules. Unknown text stays neutral. The local rules are an opt-in demo
+policy, not a general sentiment model.
+
+`CharacterSpeechArticulation` supplies only openness and width. The shared SwiftUI
+modifier uses a 45ms mouth retarget on each renderer's existing monotonic clock. It
+applies only during chat/voice output, preserves expression curvature and all gaze,
+action and body channels, and never restarts an authored GIF. Reduce Motion responds
+to explicit mouth targets without autonomous travel. A nil input restores the existing
+articulation. Custom renderers can apply the same value to a sampled pose.
+
+The macOS host owns synthesis, a single temporary PCM file, playback and cancellation.
+Measured 20ms energy windows and word markers are sampled using `AVAudioPlayer.currentTime`;
+spelling supplies approximate vowel shapes because the installed Korean voice emits
+word markers rather than phonemes. Silent text preview is explicitly labelled estimated.
+An operation identity rejects obsolete synthesis results, playback is cancelled before
+replacement, and owned audio files are removed on stop/completion. The existing reducer
+executes all semantic changes, including observed action completion. No microphone,
+chat server, credentials or network inference is required by the demo.
+
 ## SEMI within the shared pipeline
 
 `CharacterTheme.semi` selects `CharacterAnatomy.semiDocumentCat`. The SEMI drawing consumes the existing `CharacterPose` channels for emotion, gaze, blink, communication, writing, and one-shot motion. It adds no separate semantic state or animation clock. The six registered textures are loaded through the package resource boundary; face features and document articulation remain scene geometry ([SEMI drawing](../Sources/ReactiveCharacterKit/Scene/Anatomy/SEMI/CharacterSEMIDrawing.swift), [resource lookup](../Sources/ReactiveCharacterKit/ResourceIO/CharacterImageResources.swift), [asset notes](../Artwork/SEMI/README.md)).

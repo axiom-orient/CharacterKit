@@ -12,6 +12,7 @@ let package = Package(
       name: "CharacterHostDemo",
       dependencies: [
         .product(name: "ReactiveCharacterKit", package: "CharacterKit"),
+        .product(name: "CharacterChat", package: "CharacterKit"),
       ]
     ),
   ],

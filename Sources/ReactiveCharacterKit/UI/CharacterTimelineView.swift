@@ -37,6 +37,8 @@
     @Environment(\.characterReducedMotion) private var hostReduceMotion
     private var accessibilityReduceMotion: Bool { systemReduceMotion || hostReduceMotion }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.characterSpeechArticulation) private var speechArticulation
+    @State private var speechPresentation = CharacterSpeechPresentation()
     @State private var presentation: CharacterPresentationSession
     @State private var appliedPoseConfiguration: PoseConfiguration
 
@@ -103,6 +105,8 @@
           }
         }
       }
+      .onAppear { speechPresentation.update(speechArticulation, at: CharacterPresentationTime.now) }
+      .onChange(of: speechArticulation) { speechPresentation.update($0, at: CharacterPresentationTime.now) }
       .onChange(of: sessionInput) { input in
         let now = CharacterPresentationTime.now
         if input.poseConfiguration != appliedPoseConfiguration {
@@ -123,10 +127,13 @@
 
     @ViewBuilder
     private func frame(reduceMotion: Bool) -> some View {
-      let pose = presentation.pose(
-        at: CharacterPresentationTime.now, reduceMotion: reduceMotion,
+      let time = CharacterPresentationTime.now
+      let base = presentation.pose(
+        at: time, reduceMotion: reduceMotion,
         projection: source.projection, motionProfile: source.motionProfile
       )
+      let pose = state.communication.requestsMouth
+        ? speechPresentation.apply(to: base, at: time, reduceMotion: reduceMotion) : base
       switch source {
       case .artDirection(let direction):
         CharacterArtFrame(

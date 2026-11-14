@@ -23,6 +23,16 @@ This working tree is a release candidate under development. The existing `1.0.0`
 
 ### Character and runtime
 
+- Add the optional `CharacterChat` product with bounded sentence cues, explicit/local
+  emotion selection, Unicode-safe speech ranges and audio/text-preview timelines.
+- Add `CharacterSpeechArticulation`, `CharacterPose.applyingSpeechArticulation` and
+  `.characterSpeechArticulation(_:)` for timed open/wide/rounded/closed mouths across
+  vector, layered and GIF renderers. Existing semantic events and state are unchanged.
+- Open the native demo in a chat studio with real Korean/English audio, shared
+  Norwegian/Simple 2D presentation, twelve-expression tour, interruptible playback,
+  gaze/action controls and actual native capture. Reuse the capture surface in the
+  existing all-character showcase.
+
 - Make compact-cat anger legible with a wide inward-slanted eye silhouette and
   downturned mouth corners. Reuse the shared compact-eye contour and preserve blink,
   gaze and continuous expression transitions.

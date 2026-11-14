@@ -119,6 +119,14 @@ does not articulate the mouth. The `emotion:` initializer remains available for
 emotion-only callers. `ReactiveCharacterView` remains the renderer for basic and human characters.
 See [GIF asset preparation](Tools/Norwegian/README.md) for the source and build contract.
 
+For content-driven chat, add the optional `CharacterChat` product. It provides a
+bounded message plan and speech timeline without putting text interpretation or audio
+I/O into the rendering SDK. Feed timed mouth shapes with
+`.characterSpeechArticulation(frame.articulation)` on any character view. The native
+chat studio demonstrates Korean/English speech, sentence emotion changes, interruption,
+gaze and one-shot actions with a live Simple 2D comparison. See
+[chat integration](docs/CHAT_INTEGRATION.md) for the host contract and timing limits.
+
 The short-lived SEMI-only `main` revision used SEMI as its implicit view and pose
 configuration. When moving from that revision, select `theme: .semi` in the view and
 use the `artDirection: .semiDocumentCat` pose or session overload to preserve SEMI's
@@ -162,6 +170,12 @@ For a native macOS consumer with emotion, speech, task lifecycle, animation, and
 ./script/build_and_run.sh
 ./script/build_and_run.sh --build-only
 ```
+
+The app opens a native chat studio: enter a character’s dialogue, choose automatic or
+explicit emotion, and play it with synthesized speech or a silent text preview.
+The Norwegian cat and Simple 2D comparison consume the same live inputs. The twelve
+expression examples and tour can be run directly; **시연 저장** captures the actual
+native views. **입력 검사기** opens the lower-level event controls.
 
 The demo exposes the bundled appearances, including one Norwegian GIF cat and
 portrait variants, through the public SDK views. It injects observed events
