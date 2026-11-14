@@ -17,12 +17,9 @@ struct CharacterSEMIMouthOpacityTests {
     width: Double = 0.68,
     skew: Double = 0
   ) -> CharacterPose {
-    let rest = source.mouth
     let mouth = CharacterMouthPose(
       visible: visible, opacity: opacity, curvature: curvature, openness: openness,
-      width: width, skew: skew, intrinsicAspect: rest.intrinsicAspect,
-      detailOpacity: rest.detailOpacity, referenceGlyphOpacity: rest.referenceGlyphOpacity,
-      glyph: rest.glyph, interior: rest.interior, contour: rest.contour, details: rest.details)
+      width: width, skew: skew)
     return CharacterPose(
       eyes: source.eyes, nearTrail: source.nearTrail, farTrail: source.farTrail,
       nearTrailOpacity: source.nearTrailOpacity, farTrailOpacity: source.farTrailOpacity,

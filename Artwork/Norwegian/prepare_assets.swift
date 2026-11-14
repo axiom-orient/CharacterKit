@@ -1,4 +1,4 @@
-// Usage: swift Tools/Norwegian/prepare_assets.swift INPUT_DIRECTORY OUTPUT_DIRECTORY
+// Usage: swift Artwork/Norwegian/prepare_assets.swift INPUT_DIRECTORY OUTPUT_DIRECTORY
 // Requires ffmpeg and gifsicle on PATH. Originals remain outside the package resource bundle.
 import CoreGraphics
 import CryptoKit

@@ -8,10 +8,7 @@ struct CharacterReferenceMouthOpacityTests {
     var rest = ReactiveCharacter.pose(state: .idle, elapsed: 0, reduceMotion: true)
     rest.detailMotion = .sample(time: 0.11, impulse: 0.4, amount: 0.7)
     let mouth = CharacterMouthPose(
-      visible: true, opacity: opacity, curvature: 1, openness: 1, width: 0.7, skew: 0,
-      intrinsicAspect: rest.mouth.intrinsicAspect, detailOpacity: rest.mouth.detailOpacity,
-      referenceGlyphOpacity: rest.mouth.referenceGlyphOpacity, glyph: rest.mouth.glyph,
-      interior: rest.mouth.interior, contour: rest.mouth.contour, details: rest.mouth.details)
+      visible: true, opacity: opacity, curvature: 1, openness: 1, width: 0.7, skew: 0)
     let pose = CharacterPose(
       eyes: rest.eyes, nearTrail: rest.nearTrail, farTrail: rest.farTrail,
       nearTrailOpacity: rest.nearTrailOpacity, farTrailOpacity: rest.farTrailOpacity,

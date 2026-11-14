@@ -22,7 +22,6 @@ final class CharacterSceneTests: XCTestCase {
     let original = try CharacterDesign.load(.white)
     let state = ReactiveCharacter.reduce(state: .idle, event: .emotionChanged(.surprise)).state
     let pose = ReactiveCharacter.pose(state: state, elapsed: 0.3, reduceMotion: true)
-    XCTAssertEqual(pose.mouth.glyph, .puckerO)
     for minimumAspect in [0.35, 0.7] {
       var profile = original.profile
       profile.rendering.minimumMouthAspect = minimumAspect

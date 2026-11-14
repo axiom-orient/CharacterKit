@@ -17,7 +17,7 @@ Install FFmpeg and [Gifsicle](https://www.lcdf.org/gifsicle/) through their offi
 distributions or a trusted package manager, then run:
 
 ```sh
-swift Tools/Norwegian/prepare_assets.swift /path/to/originals /tmp/norwegian-prepared
+swift Artwork/Norwegian/prepare_assets.swift /path/to/originals /tmp/norwegian-prepared
 ```
 
 The tool preserves the authored middle frames, fits each canvas without stretching,

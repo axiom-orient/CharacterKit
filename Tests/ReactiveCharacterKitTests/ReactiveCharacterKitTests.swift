@@ -218,105 +218,6 @@ final class ReactiveCharacterKitTests: XCTestCase {
     }
   }
 
-  func testMouthAtlasUsesSixteenFiniteSameTopologyGlyphs() {
-    XCTAssertEqual(CharacterMouthGlyph.allCases.count, 16)
-    let expectedInterior: [CharacterMouthGlyph: CharacterMouthInterior] = [
-      .slantedOpen: .none,
-      .baseFlat: .none,
-      .toothyOpen: .teethAndTongue,
-      .tongueDrop: .tongue,
-      .zigzag: .none,
-      .clenchedWave: .none,
-      .speechWave: .none,
-      .puckerO: .none,
-      .halfMoonTeeth: .teeth,
-      .uneasyOpen: .none,
-      .downturnedArc: .none,
-      .asymmetricSmirk: .none,
-      .openGrill: .teethAndTongue,
-      .smallYawn: .none,
-      .wideToothyGrin: .teethAndTongue,
-      .caretFrown: .none,
-    ]
-    var definitions: [MouthGlyphDefinition] = []
-    for glyph in CharacterMouthGlyph.allCases {
-      let definition = MouthGlyphLibrary.definition(
-        for: glyph,
-        openness: 0.62,
-        width: 0.84,
-        curvature: -0.14,
-        skew: 0.12
-      )
-      definitions.append(definition)
-      XCTAssertEqual(definition.segments.count, MouthGlyphLibrary.segmentCount, glyph.rawValue)
-      let expected = expectedInterior[glyph] ?? CharacterMouthInterior.none
-      XCTAssertEqual(definition.interior, expected, glyph.rawValue)
-      XCTAssertFalse(
-        definition.details.isEmpty && expected != CharacterMouthInterior.none, glyph.rawValue)
-      for detail in definition.details {
-        XCTAssertFalse(detail.segments.isEmpty, glyph.rawValue)
-        for segment in detail.segments {
-          let values = [
-            segment.start.x, segment.start.y,
-            segment.control1.x, segment.control1.y,
-            segment.control2.x, segment.control2.y,
-            segment.end.x, segment.end.y,
-          ]
-          XCTAssertTrue(values.allSatisfy(\.isFinite), glyph.rawValue)
-        }
-      }
-      for segment in definition.segments {
-        let values = [
-          segment.start.x, segment.start.y,
-          segment.control1.x, segment.control1.y,
-          segment.control2.x, segment.control2.y,
-          segment.end.x, segment.end.y,
-        ]
-        XCTAssertTrue(values.allSatisfy(\.isFinite), glyph.rawValue)
-      }
-    }
-    for lhs in definitions.indices {
-      for rhs in definitions.indices where rhs > lhs {
-        XCTAssertNotEqual(
-          definitions[lhs].segments,
-          definitions[rhs].segments,
-          "distinct authored silhouettes required"
-        )
-      }
-    }
-  }
-
-  func testRuntimeMouthFitPreservesTallAndWideReferenceAspects() {
-    let regionAspect = CharacterLayout.default.mouth.width / CharacterLayout.default.mouth.height
-    let pucker = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.surprise)
-    ).state
-    let flat = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.calmTrust)
-    ).state
-    let puckerPose = ReactiveCharacter.pose(state: pucker, elapsed: 0, reduceMotion: true).mouth
-    let flatPose = ReactiveCharacter.pose(state: flat, elapsed: 0, reduceMotion: true).mouth
-    let puckerScale = MouthGlyphLibrary.aspectFitScale(
-      intrinsicAspect: puckerPose.intrinsicAspect,
-      regionAspect: regionAspect
-    )
-    let flatScale = MouthGlyphLibrary.aspectFitScale(
-      intrinsicAspect: flatPose.intrinsicAspect,
-      regionAspect: regionAspect
-    )
-
-    XCTAssertLessThan(puckerScale.x, puckerScale.y)
-    XCTAssertGreaterThan(flatScale.x, flatScale.y)
-  }
-
-  func testReferenceRasterAtlasContainsAllGlyphs() {
-    for glyph in CharacterMouthGlyph.allCases {
-      XCTAssertNotNil(MouthReferenceRasterLibrary.resourceURL(for: glyph), glyph.rawValue)
-    }
-  }
-
   func testPoseRemainsContinuousAcrossFormerOneDayBoundary() {
     let before = ReactiveCharacter.pose(state: .idle, elapsed: 86_399.999, projection: .flat)
     let after = ReactiveCharacter.pose(state: .idle, elapsed: 86_400.001, projection: .flat)
@@ -327,232 +228,29 @@ final class ReactiveCharacterKitTests: XCTestCase {
     XCTAssertLessThan(abs(after.eyes.right.centerY - before.eyes.right.centerY), 0.01)
   }
 
-  func testStableTargetEnablesReferenceGlyphRendering() {
-    let state = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.joy)
-    ).state
-    let pose = ReactiveCharacter.pose(state: state, elapsed: 0.25, reduceMotion: true)
-
-    XCTAssertGreaterThan(pose.mouth.referenceGlyphOpacity, 0.99)
+  func testVoiceZeroIsVisibleAndWritingWaveKeepsItsCommunicationTiming() {
+    let state = ReactiveCharacter.reduce(state: .idle, event: .voiceStarted).state
+    let reduced = ReactiveCharacter.pose(state: state, elapsed: 0, reduceMotion: true)
+    XCTAssertTrue(reduced.mouth.visible)
+    XCTAssertTrue(reduced.mouth.outputWave)
+    XCTAssertTrue(ReactiveCharacter.pose(state: state, elapsed: 0.18).mouth.outputWave)
+    XCTAssertFalse(ReactiveCharacter.pose(state: state, elapsed: 0.33).mouth.outputWave)
+    XCTAssertFalse(ReactiveCharacter.pose(state: state, elapsed: 0.72).mouth.outputWave)
   }
 
-  func testEmotionSubphasesReachAllMouthGlyphFamilies() {
-    let sampleTimes = stride(from: 0.0, through: 2.4, by: 0.08).map { Double($0) }
-    var reached = Set<CharacterMouthGlyph>()
-    for emotion in CharacterEmotion.allCases {
-      let state = ReactiveCharacter.reduce(
-        state: ReactiveCharacter.initialState,
-        event: .emotionChanged(emotion)
-      ).state
-      for time in sampleTimes {
-        reached.insert(
-          ReactiveCharacter.pose(
-            state: state,
-            elapsed: time,
-            expressionElapsed: time,
-            reduceMotion: false
-          ).mouth.glyph
-        )
-      }
-    }
-    let communication = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .chatStarted
-    ).state
-    for time in sampleTimes {
-      reached.insert(
-        ReactiveCharacter.pose(
-          state: communication,
-          elapsed: time,
-          communicationElapsed: time,
-          reduceMotion: false
-        ).mouth.glyph
-      )
-    }
-    XCTAssertEqual(reached, Set(CharacterMouthGlyph.allCases))
-  }
-
-  func testVoiceZeroIsVisibleAndVoiceCycleUsesMoreThanOneFamily() {
-    let started = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .voiceStarted
-    ).state
-    let zero = ReactiveCharacter.pose(state: started, elapsed: 0, reduceMotion: true)
-    XCTAssertTrue(zero.mouth.visible)
-    XCTAssertEqual(zero.mouth.glyph, .speechWave)
-    XCTAssertEqual(zero.mouth.contour.count, MouthGlyphLibrary.segmentCount)
-
-    let first = ReactiveCharacter.pose(state: started, elapsed: 0.18, reduceMotion: false).mouth
-      .glyph
-    let second = ReactiveCharacter.pose(state: started, elapsed: 0.72, reduceMotion: false).mouth
-      .glyph
-    XCTAssertNotEqual(first, second)
-  }
-
-  func testRepeatingMouthCycleReturnsThroughBaseAndFadesDetails() {
-    let chat = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .chatStarted
-    ).state
-    let held = ReactiveCharacter.pose(
-      state: chat,
-      elapsed: 0.20,
-      communicationElapsed: 0.20,
-      reduceMotion: false
-    ).mouth
-    let returned = ReactiveCharacter.pose(
-      state: chat,
-      elapsed: 0.30,
-      communicationElapsed: 0.30,
-      reduceMotion: false
-    ).mouth
-    let base = ReactiveCharacter.pose(
-      state: chat,
-      elapsed: 0.33,
-      communicationElapsed: 0.33,
-      reduceMotion: false
-    ).mouth
-    let next = ReactiveCharacter.pose(
-      state: chat,
-      elapsed: 0.361,
-      communicationElapsed: 0.361,
-      reduceMotion: false
-    ).mouth
-
-    XCTAssertEqual(held.glyph, .speechWave)
-    XCTAssertGreaterThan(held.detailOpacity, 0.99)
-    XCTAssertEqual(returned.glyph, .speechWave)
-    XCTAssertLessThan(returned.detailOpacity, 0.001)
-    XCTAssertEqual(base.glyph, .baseFlat)
-    XCTAssertEqual(base.detailOpacity, 0, accuracy: 1e-12)
-    let baseContour = MouthGlyphLibrary.contour(
-      for: .baseFlat,
-      openness: 0,
-      width: base.width,
-      curvature: 0,
-      skew: 0
-    )
-    var baseDifference = 0.0
-    for (lhs, rhs) in zip(base.contour, baseContour) {
-      baseDifference = max(baseDifference, abs(lhs.start.x - rhs.start.x))
-      baseDifference = max(baseDifference, abs(lhs.start.y - rhs.start.y))
-      baseDifference = max(baseDifference, abs(lhs.control1.x - rhs.control1.x))
-      baseDifference = max(baseDifference, abs(lhs.control1.y - rhs.control1.y))
-      baseDifference = max(baseDifference, abs(lhs.control2.x - rhs.control2.x))
-      baseDifference = max(baseDifference, abs(lhs.control2.y - rhs.control2.y))
-      baseDifference = max(baseDifference, abs(lhs.end.x - rhs.end.x))
-      baseDifference = max(baseDifference, abs(lhs.end.y - rhs.end.y))
-    }
-    XCTAssertLessThanOrEqual(baseDifference, 1e-12)
-    XCTAssertEqual(next.glyph, .slantedOpen)
-    XCTAssertEqual(next.detailOpacity, 0, accuracy: 1e-12)
-    let nextBaseContour = MouthGlyphLibrary.contour(
-      for: .baseFlat,
-      openness: 0,
-      width: next.width,
-      curvature: 0,
-      skew: 0
-    )
-    let nextTargetContour = MouthGlyphLibrary.contour(
-      for: .slantedOpen,
-      openness: 1,
-      width: next.width,
-      curvature: next.curvature,
-      skew: next.skew
-    )
-    var nextBaseDifference = 0.0
-    var nextTargetDifference = 0.0
-    for (lhs, rhs) in zip(next.contour, nextBaseContour) {
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.start.x - rhs.start.x))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.start.y - rhs.start.y))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.control1.x - rhs.control1.x))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.control1.y - rhs.control1.y))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.control2.x - rhs.control2.x))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.control2.y - rhs.control2.y))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.end.x - rhs.end.x))
-      nextBaseDifference = max(nextBaseDifference, abs(lhs.end.y - rhs.end.y))
-    }
-    for (lhs, rhs) in zip(next.contour, nextTargetContour) {
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.start.x - rhs.start.x))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.start.y - rhs.start.y))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.control1.x - rhs.control1.x))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.control1.y - rhs.control1.y))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.control2.x - rhs.control2.x))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.control2.y - rhs.control2.y))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.end.x - rhs.end.x))
-      nextTargetDifference = max(nextTargetDifference, abs(lhs.end.y - rhs.end.y))
-    }
-    XCTAssertGreaterThan(nextBaseDifference, 0.000_001)
-    XCTAssertLessThan(nextBaseDifference, nextTargetDifference)
-  }
-
-  func testPresentationBridgeUsesExactSpritesNearEndpointsOnly() {
-    let first = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.joy)
-    ).state
-    let next = ReactiveCharacter.reduce(
-      state: first,
-      event: .emotionChanged(.surprise)
-    ).state
-    var session = CharacterPresentationSession(state: first, at: 0)
-
-    XCTAssertTrue(session.update(state: next, at: 0.60))
-
-    let handoff = session.inspect(at: 0.60).remainingHandoffDuration
-    let middlePose = session.pose(at: 0.60 + handoff * 0.5).mouth
-    XCTAssertLessThan(middlePose.referenceGlyphOpacity, 0.05)
-
-    let settledPose = session.pose(at: 0.60 + handoff + 0.18).mouth
-    XCTAssertGreaterThan(settledPose.referenceGlyphOpacity, 0.99)
-  }
-
-  func testMouthReturnsToBaseBeforeBuildingNextGlyph() {
-    let first = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.joy)
-    ).state
-    let next = ReactiveCharacter.reduce(
-      state: first,
-      event: .emotionChanged(.surprise)
-    ).state
+  func testMouthReturnsToNeutralBeforeBuildingNextExpression() {
+    let first = ReactiveCharacter.reduce(state: .idle, event: .emotionChanged(.joy)).state
+    let next = ReactiveCharacter.reduce(state: first, event: .emotionChanged(.surprise)).state
     var session = CharacterPresentationSession(state: first, at: 0)
     let source = session.pose(at: 0.18)
     XCTAssertTrue(session.update(state: next, at: 0.18))
-    XCTAssertEqual(session.pose(at: 0.18).mouth.contour, source.mouth.contour)
-
-    let neutral = ReactiveCharacter.pose(
-      state: ReactiveCharacter.initialState,
-      elapsed: 0,
-      reduceMotion: true
-    ).mouth
+    XCTAssertEqual(session.pose(at: 0.18).mouth, source.mouth)
     let returned = session.pose(at: 0.18 + 0.063)
-    XCTAssertEqual(returned.mouth.contour.count, neutral.contour.count)
-    var maximumContourDifference = 0.0
-    for (lhs, rhs) in zip(returned.mouth.contour, neutral.contour) {
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.start.x - rhs.start.x))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.start.y - rhs.start.y))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.control1.x - rhs.control1.x))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.control1.y - rhs.control1.y))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.control2.x - rhs.control2.x))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.control2.y - rhs.control2.y))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.end.x - rhs.end.x))
-      maximumContourDifference = max(maximumContourDifference, abs(lhs.end.y - rhs.end.y))
-    }
-    XCTAssertLessThanOrEqual(maximumContourDifference, 1e-12)
     XCTAssertFalse(returned.mouth.visible)
-
-    let handoffEnd = 0.18 + session.inspect(at: 0.18).remainingHandoffDuration
-    let hold = session.pose(at: handoffEnd - 0.01)
-    XCTAssertEqual(hold.mouth.contour.count, neutral.contour.count)
-    XCTAssertFalse(hold.mouth.visible)
-
-    // The rest of the character may use a longer return budget; the mouth is
-    // guaranteed to build only after that bridge and its neutral hold finish.
-    let built = session.pose(at: handoffEnd + 0.18)
-    XCTAssertEqual(built.mouth.glyph, .puckerO)
-    XCTAssertNotEqual(built.mouth.contour, neutral.contour)
+    XCTAssertEqual(returned.mouth.openness, 0, accuracy: 1e-12)
+    let end = 0.18 + session.inspect(at: 0.18).remainingHandoffDuration
+    XCTAssertFalse(session.pose(at: end - 0.01).mouth.visible)
+    XCTAssertGreaterThan(session.pose(at: end + 0.18).mouth.openness, 0.5)
   }
 
   func testReducedMotionPresentationSnapsToStableTargetWithoutBridge() {
@@ -588,7 +286,6 @@ final class ReactiveCharacterKitTests: XCTestCase {
     ).state
     let early = ReactiveCharacter.pose(state: state, elapsed: 0, reduceMotion: true)
     let late = ReactiveCharacter.pose(state: state, elapsed: 900, reduceMotion: true)
-    XCTAssertEqual(early.mouth.glyph, .wideToothyGrin)
     XCTAssertEqual(early.mouth, late.mouth)
   }
 
@@ -864,39 +561,6 @@ final class ReactiveCharacterKitTests: XCTestCase {
     XCTAssertGreaterThan(joyPose.mouth.curvature, sadnessPose.mouth.curvature)
     XCTAssertGreaterThan(fearPose.eyes.left.height, angerPose.eyes.left.height)
     XCTAssertGreaterThan(fearPose.mouth.openness, angerPose.mouth.openness)
-  }
-
-  func testSubtleEmotionMouthCyclesAnimateWithoutBreakingReducedMotion() {
-    let gratitude = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.gratitude)
-    ).state
-    let calm = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.calmTrust)
-    ).state
-    let fatigue = ReactiveCharacter.reduce(
-      state: ReactiveCharacter.initialState,
-      event: .emotionChanged(.fatigueBurden)
-    ).state
-
-    XCTAssertNotEqual(
-      ReactiveCharacter.pose(state: gratitude, elapsed: 0.18, reduceMotion: false).mouth.glyph,
-      ReactiveCharacter.pose(state: gratitude, elapsed: 0.82, reduceMotion: false).mouth.glyph
-    )
-    XCTAssertNotEqual(
-      ReactiveCharacter.pose(state: calm, elapsed: 0.22, reduceMotion: false).mouth.glyph,
-      ReactiveCharacter.pose(state: calm, elapsed: 0.90, reduceMotion: false).mouth.glyph
-    )
-    XCTAssertNotEqual(
-      ReactiveCharacter.pose(state: fatigue, elapsed: 0.34, reduceMotion: false).mouth.glyph,
-      ReactiveCharacter.pose(state: fatigue, elapsed: 1.12, reduceMotion: false).mouth.glyph
-    )
-
-    XCTAssertEqual(
-      ReactiveCharacter.pose(state: gratitude, elapsed: 0.18, reduceMotion: true).mouth,
-      ReactiveCharacter.pose(state: gratitude, elapsed: 10.18, reduceMotion: true).mouth
-    )
   }
 
   func testEveryEmotionHasTimeVaryingPresentation() {
@@ -1743,13 +1407,6 @@ final class ReactiveCharacterKitTests: XCTestCase {
         XCTAssertEqual(image.size, CGSize(width: 1024, height: 1024))
         XCTAssertNotNil(image.cgImage)
       }
-      for glyph in CharacterMouthGlyph.allCases {
-        let image = try MouthReferenceRasterLibrary.platformImage(for: glyph)
-        XCTAssertGreaterThan(image.size.width, 0)
-        XCTAssertGreaterThan(image.size.height, 0)
-        XCTAssertNotNil(image.cgImage)
-      }
-      XCTAssertTrue(MouthReferenceRasterLibrary.unavailableGlyphs.isEmpty)
     }
 
     func testNativeImageLoaderReportsMissingAndInvalidFiles() throws {

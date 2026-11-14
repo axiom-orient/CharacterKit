@@ -118,7 +118,7 @@ final class ThemeTests: XCTestCase {
       writing.communication, .silent,
       "output mouth must not fake a host chat/voice state")
     XCTAssertTrue(writingPose.mouth.visible)
-    XCTAssertEqual(writingPose.mouth.glyph, .speechWave)
+    XCTAssertTrue(writingPose.mouth.outputWave)
     let writingScene = try CharacterSceneBuilder.scene(
       pose: writingPose, artDirection: direction, width: 320, height: 320)
     XCTAssertTrue(writingScene.nodes.contains { $0.id == "mouth" })

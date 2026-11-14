@@ -1167,24 +1167,7 @@ enum CharacterMotion {
         curvature: 0,
         openness: 0,
         width: expression.mouthWidth,
-        skew: 0,
-        intrinsicAspect: MouthGlyphLibrary.intrinsicAspect(
-          for: .baseFlat,
-          openness: 0,
-          width: expression.mouthWidth
-        ),
-        detailOpacity: 0,
-        referenceGlyphOpacity: 0,
-        glyph: .baseFlat,
-        interior: .none,
-        contour: MouthGlyphLibrary.contour(
-          for: .baseFlat,
-          openness: 0,
-          width: expression.mouthWidth,
-          curvature: 0,
-          skew: 0
-        ),
-        details: []
+        skew: 0
       )
     }
 
@@ -1208,7 +1191,7 @@ enum CharacterMotion {
       speechOpen = 0.10 + presentedLevel * 0.78
     }
 
-    let cycle = MouthGlyphLibrary.cycleSample(
+    let cycle = CharacterMouthCycle.sample(
       // A silent agent-writing pose uses the output wave family rather than manufacturing an
       // emotion. Explicit emotion remains authoritative when it is present.
       emotion: emotion,
@@ -1217,61 +1200,19 @@ enum CharacterMotion {
       communicationElapsed: elapsed,
       reduceMotion: reduceMotion
     )
-    // Use one clamped width for the payload and its contour. Without this,
-    // tiny expression-sampler floating point differences make the exposed
-    // pose width disagree with the stored neutral bridge contour.
     let runtimeWidth = clamp(expression.mouthWidth, lower: 0.25, upper: 1)
     let runtimeSkew = clamp(expression.mouthSkew, lower: -1, upper: 1)
     let runtimeOpenness = max(expression.mouthOpenness, speechOpen)
-    let targetDefinition = MouthGlyphLibrary.definition(
-      for: cycle.glyph,
-      openness: runtimeOpenness,
-      width: runtimeWidth,
-      curvature: expression.mouthCurvature,
-      skew: runtimeSkew
-    )
-    let baseContour = MouthGlyphLibrary.contour(
-      for: .baseFlat,
-      // The bridge source is the neutral flat glyph, not a skewed copy of the
-      // target expression. Keeping its transform neutral guarantees every
-      // repeated target starts from the same base contour.
-      openness: 0,
-      width: runtimeWidth,
-      curvature: 0,
-      skew: 0
-    )
-    let contour = MouthGlyphLibrary.blend(
-      from: baseContour,
-      to: targetDefinition.segments,
-      amount: cycle.targetAmount
-    )
-    let targetAspect = MouthGlyphLibrary.intrinsicAspect(
-      for: cycle.glyph,
-      openness: runtimeOpenness,
-      width: runtimeWidth
-    )
-    let baseAspect = MouthGlyphLibrary.intrinsicAspect(
-      for: .baseFlat,
-      openness: runtimeOpenness,
-      width: runtimeWidth
-    )
 
     return CharacterMouthPose(
       visible: true,
       opacity: 1,
       curvature: expression.mouthCurvature,
-      // Authored expression / host speech own articulation. The optional reference atlas
-      // may bridge between glyphs, but its independent cycle must not close the whole face.
       openness: clamp(runtimeOpenness, lower: 0, upper: 1),
       width: runtimeWidth,
       skew: runtimeSkew,
-      intrinsicAspect: baseAspect + (targetAspect - baseAspect) * cycle.targetAmount,
-      detailOpacity: cycle.detailOpacity,
-      referenceGlyphOpacity: smoothStep((cycle.targetAmount - 0.90) / 0.10),
-      glyph: cycle.glyph,
-      interior: targetDefinition.interior,
-      contour: contour,
-      details: targetDefinition.details
+      outputWave: cycle.outputWave,
+      waveBlendWeight: cycle.blendWeight
     )
   }
 

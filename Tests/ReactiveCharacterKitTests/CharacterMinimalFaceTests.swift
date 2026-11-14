@@ -244,13 +244,10 @@ final class CharacterMinimalFaceTests: XCTestCase {
   }
 
   func testMouthCrossingZeroCurvatureDoesNotJumpOrTurnInsideOut() {
-    let base = ReactiveCharacter.pose(state: state(.joy), elapsed: 0.52, reduceMotion: true).mouth
     func mouth(_ curve: Double, _ openness: Double) -> CharacterMouthPose {
       .init(
         visible: true, opacity: 1, curvature: curve, openness: openness, width: 0.70,
-        skew: 0, intrinsicAspect: base.intrinsicAspect, detailOpacity: base.detailOpacity,
-        referenceGlyphOpacity: base.referenceGlyphOpacity, glyph: base.glyph,
-        interior: base.interior, contour: base.contour, details: base.details)
+        skew: 0)
     }
     let face = CharacterRect(x: 0, y: 0, width: 392, height: 414)
     for open in [0.0, 0.10, 0.32, 0.80] {

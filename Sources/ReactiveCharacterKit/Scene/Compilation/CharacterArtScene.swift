@@ -415,8 +415,7 @@ struct CharacterArtDrawing {
     add(
       "mouth.innerTongue", paths.tongue, fill: .solid(direction.style.partColors.tongue),
       opacity: paths.tongueOpacity, transform: mouthTransform, clips: [paths.outer])
-    // Glyph metadata alone must never claim that the host is producing output.
-    if writingVisible, mouth.glyph == .speechWave {
+    if writingVisible, mouth.outputWave {
       add(
         "mouth.wave", CharacterMouthGeometry.speechWave(in: board), stroke: light,
         width: max(0.7, board.width * 0.006), opacity: 0.90,

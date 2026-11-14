@@ -54,9 +54,10 @@ enum CharacterSceneCompiler {
       [
         surface.offsetX, surface.offsetY, surface.scaleX, surface.scaleY, surface.angle,
         pose.motionEnergy, pose.noseOffsetX, pose.writingMotionPhase, pose.writingOpacity,
-        pose.mouth.opacity, pose.mouth.intrinsicAspect,
+        pose.mouth.opacity, pose.mouth.openness, pose.mouth.width,
+        pose.mouth.curvature, pose.mouth.skew, pose.mouth.waveBlendWeight,
       ].allSatisfy(\.isFinite),
-      surface.scaleX > 0, surface.scaleY > 0, pose.mouth.intrinsicAspect > 0
+      surface.scaleX > 0, surface.scaleY > 0, pose.mouth.width >= 0
     else { throw CharacterDesignError.invalidPose("surface/mouth/writing") }
     for pair in [pose.eyes, pose.nearTrail, pose.farTrail].compactMap({ $0 }) {
       for eye in [pair.left, pair.right] {
@@ -72,18 +73,6 @@ enum CharacterSceneCompiler {
         (-4...5).contains(accent.centerX), (-4...5).contains(accent.centerY),
         accent.width <= 4, accent.height <= 4, (0...1).contains(accent.opacity)
       else { throw CharacterDesignError.invalidPose("accent") }
-    }
-    if pose.mouth.visible {
-      guard let bounds = pose.mouth.vectorBounds, bounds.width > 0, bounds.height > 0 else {
-        throw CharacterDesignError.invalidPose("degenerate mouth contour")
-      }
-    }
-    for segment in pose.mouth.contour + pose.mouth.details.flatMap(\.segments) {
-      for point in [segment.start, segment.control1, segment.control2, segment.end] {
-        guard point.x.isFinite, point.y.isFinite else {
-          throw CharacterDesignError.invalidPose("mouth contour")
-        }
-      }
     }
   }
 }

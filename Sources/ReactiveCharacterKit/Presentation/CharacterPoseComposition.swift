@@ -17,13 +17,9 @@ extension CharacterPose {
     guard weight > 0 else { return self }
     let open = mouth.openness + (articulation.openness - mouth.openness) * weight
     let width = mouth.width + (articulation.width - mouth.width) * weight
-    let definition = MouthGlyphLibrary.definition(for: mouth.glyph, openness: open,
-      width: width, curvature: mouth.curvature, skew: mouth.skew)
     let next = CharacterMouthPose(visible: true, opacity: mouth.opacity + (1 - mouth.opacity) * weight,
       curvature: mouth.curvature, openness: open, width: width, skew: mouth.skew,
-      intrinsicAspect: MouthGlyphLibrary.intrinsicAspect(for: mouth.glyph, openness: open, width: width),
-      detailOpacity: mouth.detailOpacity, referenceGlyphOpacity: mouth.referenceGlyphOpacity,
-      glyph: mouth.glyph, interior: definition.interior, contour: definition.segments, details: definition.details)
+      outputWave: mouth.outputWave, waveBlendWeight: mouth.waveBlendWeight)
     return replacing(surface: surface, mouth: next)
   }
 

@@ -223,24 +223,3 @@ extension CharacterVectorPath {
     mapped { .init(x: t.a * $0.x + t.c * $0.y + t.tx, y: t.b * $0.x + t.d * $0.y + t.ty) }
   }
 }
-
-// Conservative cubic-control bounds: the entire curve is contained by this envelope.
-// Used by boundary validation and vector fitting, never by semantic state or the reference renderer.
-extension CharacterMouthPose {
-  var vectorBounds: CharacterRect? {
-    guard let first = contour.first else { return nil }
-    var minX = first.start.x
-    var maxX = minX
-    var minY = first.start.y
-    var maxY = minY
-    for s in contour {
-      for p in [s.start, s.control1, s.control2, s.end] {
-        minX = min(minX, p.x)
-        maxX = max(maxX, p.x)
-        minY = min(minY, p.y)
-        maxY = max(maxY, p.y)
-      }
-    }
-    return .init(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-  }
-}

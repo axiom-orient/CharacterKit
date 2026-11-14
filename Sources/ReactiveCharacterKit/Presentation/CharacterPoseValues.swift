@@ -107,16 +107,15 @@ public struct CharacterMouthPose: Sendable, Equatable {
   public let openness: Double
   public let width: Double
   public let skew: Double
-  /// Reference-glyph metadata retained for articulation and source coverage.
-  /// Built-in face geometry consumes the numeric pose above, never a bitmap crossfade.
-  let intrinsicAspect: Double
-  let detailOpacity: Double
-  let referenceGlyphOpacity: Double
+  let outputWave: Bool
+  let waveBlendWeight: Double
 
-  let glyph: CharacterMouthGlyph
-  let interior: CharacterMouthInterior
-  let contour: [MouthCubicSegment]
-  let details: [MouthDetailPath]
+  init(visible: Bool, opacity: Double, curvature: Double, openness: Double, width: Double,
+    skew: Double, outputWave: Bool = false, waveBlendWeight: Double = 0) {
+    self.visible = visible; self.opacity = opacity; self.curvature = curvature
+    self.openness = openness; self.width = width; self.skew = skew
+    self.outputWave = outputWave; self.waveBlendWeight = waveBlendWeight
+  }
 }
 
 /// Renderer-independent presentation output.

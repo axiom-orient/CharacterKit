@@ -670,21 +670,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     let farTrail = from.farTrail.map { blendEyePair($0, to.eyes, amount: amount) }
     let mouthAmount = clamp(mouthProgress, lower: 0, upper: 1)
     let mouthOpacity = mix(from.mouth.opacity, to.mouth.opacity, amount: mouthAmount)
-    let mouthContour = MouthGlyphLibrary.blend(
-      from: from.mouth.contour,
-      to: to.mouth.contour,
-      amount: mouthAmount
-    )
-    // Interior geometry is not topology-compatible across glyphs. Fade it out
-    // before the shared contour reaches neutral, and keep it suppressed while
-    // the handoff is returning. This avoids a stale tooth/tongue set reading as
-    // a detached second mouth during an interrupted transition.
-    let detailReturn = 1 - smoothStep(mouthAmount / 0.64)
-    let detailOpacity =
-      from.mouth.detailOpacity * detailReturn
-      + to.mouth.detailOpacity * smoothStep((mouthAmount - 0.78) / 0.22)
     let writingOpacity = from.writingOpacity * fade
-    let reference = referenceGlyphTransition(
+    let reference = outputWaveTransition(
       from: from.mouth, to: to.mouth, progress: mouthAmount)
 
     return CharacterPose(
@@ -701,20 +688,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
         openness: max(0, mix(from.mouth.openness, to.mouth.openness, amount: mouthAmount)),
         width: max(0.20, mix(from.mouth.width, to.mouth.width, amount: mouthAmount)),
         skew: mix(from.mouth.skew, to.mouth.skew, amount: mouthAmount),
-        intrinsicAspect: mix(
-          from.mouth.intrinsicAspect,
-          to.mouth.intrinsicAspect,
-          amount: mouthAmount
-        ),
-        detailOpacity: clamp(detailOpacity, lower: 0, upper: 1),
-        referenceGlyphOpacity: reference.opacity,
-        glyph: reference.glyph,
-        interior: mouthAmount >= 0.999 ? to.mouth.interior : from.mouth.interior,
-        contour: mouthContour,
-        // Detail paths are intentionally kept as a single authored set until
-        // the contour has arrived.  Interpolating unrelated teeth/tongue
-        // topology would briefly create a second-looking mouth.
-        details: mouthAmount >= 0.999 ? to.mouth.details : from.mouth.details
+        outputWave: reference.outputWave, waveBlendWeight: reference.opacity
       ),
       surface: CharacterSurfacePose(
         offsetX: mix(from.surface.offsetX, to.surface.offsetX, amount: amount),
@@ -757,13 +731,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     if progress >= 1 { return pose }
     let source = neutral.mouth
     let mouth = pose.mouth
-    let blendedContour = MouthGlyphLibrary.blend(
-      from: source.contour,
-      to: mouth.contour,
-      amount: progress
-    )
     let opacity = mouth.opacity * progress
-    let reference = referenceGlyphTransition(from: source, to: mouth, progress: progress)
+    let reference = outputWaveTransition(from: source, to: mouth, progress: progress)
     return CharacterPose(
       eyes: blendEyePair(neutral.eyes, pose.eyes, amount: progress),
       nearTrail: pose.nearTrail.map { blendEyePair(neutral.eyes, $0, amount: progress) },
@@ -778,20 +747,7 @@ public struct CharacterPresentationSession: Sendable, Equatable {
         openness: mouth.openness * progress,
         width: mix(source.width, mouth.width, amount: progress),
         skew: mouth.skew * progress,
-        intrinsicAspect: mix(
-          source.intrinsicAspect,
-          mouth.intrinsicAspect,
-          amount: progress
-        ),
-        // The target's interior is revealed only after most of its contour
-        // has arrived. The raw pose may also request an early fade-out for a
-        // repeating cycle; multiplying preserves that request.
-        detailOpacity: mouth.detailOpacity * smoothStep((progress - 0.48) / 0.52),
-        referenceGlyphOpacity: reference.opacity,
-        glyph: reference.glyph,
-        interior: mouth.interior,
-        contour: blendedContour,
-        details: progress >= 0.999 ? mouth.details : source.details
+        outputWave: reference.outputWave, waveBlendWeight: reference.opacity
       ),
       surface: CharacterSurfacePose(
         offsetX: mix(neutral.surface.offsetX, pose.surface.offsetX, amount: progress),
@@ -819,23 +775,23 @@ public struct CharacterPresentationSession: Sendable, Equatable {
     )
   }
 
-  /// Select a single reference glyph during the crossing; never cross-fade two authored mouths.
-  private func referenceGlyphTransition(
+  /// Preserve the writing waveform’s neutral-handoff timing.
+  private func outputWaveTransition(
     from source: CharacterMouthPose, to target: CharacterMouthPose, progress: Double
-  ) -> (opacity: Double, glyph: CharacterMouthGlyph) {
-    let sourceOpacity = source.referenceGlyphOpacity * (1 - smoothStep(progress / 0.24))
-    let targetOpacity = target.referenceGlyphOpacity * smoothStep((progress - 0.76) / 0.24)
+  ) -> (opacity: Double, outputWave: Bool) {
+    let sourceOpacity = source.waveBlendWeight * (1 - smoothStep(progress / 0.24))
+    let targetOpacity = target.waveBlendWeight * smoothStep((progress - 0.76) / 0.24)
     if progress <= 0.001 {
-      return (source.referenceGlyphOpacity, source.glyph)
+      return (source.waveBlendWeight, source.outputWave)
     }
     if progress >= 0.999 {
-      return (target.referenceGlyphOpacity, target.glyph)
+      return (target.waveBlendWeight, target.outputWave)
     }
     if sourceOpacity > targetOpacity, sourceOpacity > 0.000_001 {
-      return (sourceOpacity, source.glyph)
+      return (sourceOpacity, source.outputWave)
     }
-    if targetOpacity > 0.000_001 { return (targetOpacity, target.glyph) }
-    return (0, progress < 0.5 ? source.glyph : target.glyph)
+    if targetOpacity > 0.000_001 { return (targetOpacity, target.outputWave) }
+    return (0, progress < 0.5 ? source.outputWave : target.outputWave)
   }
 
   private func blendEyePair(
