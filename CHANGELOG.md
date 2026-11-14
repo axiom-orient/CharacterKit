@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- Make GIF mouth-mask arithmetic explicitly Double so Swift 6.0/6.1 toolchains compile
+  the same rendering calculation without CGFloat overload ambiguity.
+
 ## 2.0.0
 
 - Restore the multi-character SDK with shared emotion, speech, gaze and action channels.

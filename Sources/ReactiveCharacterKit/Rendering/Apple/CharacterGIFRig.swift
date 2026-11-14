@@ -147,7 +147,7 @@
       // The closed patch removes the clip's mouth before articulation; it never
       // replaces eyes or broad fur regions. All seams lie in the white muzzle.
       visit(center: center, rx: 35, ry: 24, source: source) { x, y, r2 in
-        let top = Self.smooth(min(1, max(0, (Double(y) - face.nose.y - 3) / 5)))
+        let top = Self.smooth(min(1, max(0, (Double(y) - Double(face.nose.y) - 3) / 5)))
         let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.45))) * top * weight
         write(&output, x, y, source: closed,
           sx: Double(x) - face.nose.x + closedFace.nose.x,
@@ -162,8 +162,8 @@
         let u = (Double(x) - center.x) / scaleX
         let v = (Double(y) - center.y) / scaleY
         let r2 = u * u / (32 * 32) + v * v / (23 * 23)
-        let sy = openFace.nose.y + 19 + v
-        let top = Self.smooth(min(1, max(0, (sy - openFace.nose.y - 5) / 4)))
+        let sy = Double(openFace.nose.y) + 19 + v
+        let top = Self.smooth(min(1, max(0, (sy - Double(openFace.nose.y) - 5) / 4)))
         let alpha = Self.smooth(min(1, max(0, (1 - r2) / 0.45))) * top * weight * openWeight
         write(&output, x, y, source: opened, sx: openFace.nose.x + u,
           sy: sy, opacity: alpha)

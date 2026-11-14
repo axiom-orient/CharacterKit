@@ -9,7 +9,7 @@ The interactive macOS app is maintained separately in
 ## Install
 
 ```swift
-.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.0.0")
+.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.0.1")
 ```
 
 Add the `ReactiveCharacterKit` product to your target.
