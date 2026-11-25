@@ -147,8 +147,9 @@
         return (name, url)
       })
     private static let rig: [String: [[Layer]]] = {
-      guard let data = try? CharacterPackageResource.data(
-        named: "full-body-cat-motion-rig", fileExtension: "json")
+      guard let packed = try? CharacterPackageResource.data(
+        named: "full-body-cat-motion-rig", fileExtension: "lzfse"),
+        let data = try? (packed as NSData).decompressed(using: .lzfse) as Data
       else { return [:] }
       return (try? JSONDecoder().decode([String: [[Layer]]].self, from: data)) ?? [:]
     }()

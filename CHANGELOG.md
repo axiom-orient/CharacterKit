@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1
+
+- Reduce the runtime resource payload with a losslessly compressed felt motion atlas and optimized PNGs.
+- Share identical reference eye and mouth masks while retaining their existing asset names.
+- Shorten the SDK guides and keep authoring tools in the Git checkout.
+
 ## 2.1.0
 
 - Add felt and crayon full-body cats with ten resting poses and six gestures. Both use the shared expression, gaze and speech inputs.

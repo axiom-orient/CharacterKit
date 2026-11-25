@@ -66,7 +66,7 @@ contours and blends them across poses. Felt scene nodes describe registered body
 textures, joint motion and the live face. The rendering boundary resolves those
 requests from package assets and composes the wool surfaces. SwiftUI Canvas,
 PNG and SVG use the same scene. Asset preparation stays in
-[Artwork/FullBodyCat](../Artwork/FullBodyCat/README.md).
+[Artwork/FullBodyCat](https://github.com/axiom-orient/CharacterKit/blob/main/Artwork/FullBodyCat/README.md).
 
 ## SEMI
 
@@ -74,7 +74,7 @@ The SEMI renderer uses connected closed mouth strokes and three whiskers per che
 Ordinary acting changes their direction/reach without crumpling; strong distress or
 explicit recoil/shake may retract them. Unblinked eye geometry prevents blink from
 moving the whiskers. Artwork preparation and registered inputs are owned by
-[Artwork/SEMI](../Artwork/SEMI/README.md).
+[Artwork/SEMI](https://github.com/axiom-orient/CharacterKit/blob/main/Artwork/SEMI/README.md).
 
 ## Input and resource validation
 

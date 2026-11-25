@@ -63,9 +63,4 @@ enum CharacterSimpleCatGeometry {
         y: 252 + dx * sin(rotation) + dy * cos(rotation))
     }
   }
-
-  static func smoothstep(_ value: Double) -> Double {
-    let t = CharacterCatMetrics.clamp(value)
-    return t * t * (3 - 2 * t)
-  }
 }

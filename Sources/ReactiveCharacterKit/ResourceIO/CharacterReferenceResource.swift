@@ -47,10 +47,11 @@ import Foundation
     }
     static func named(_ asset: CharacterImageAsset) -> CharacterPlatformImage? {
       let bundle: Bundle = asset.source == .package ? .module : .main
+      let name = asset.source == .package ? CharacterPackageResource.pngName(asset.name) : asset.name
       #if os(iOS)
-        return UIImage(named: asset.name, in: bundle, compatibleWith: nil)
+        return UIImage(named: name, in: bundle, compatibleWith: nil)
       #else
-        return bundle.image(forResource: NSImage.Name(asset.name))
+        return bundle.image(forResource: NSImage.Name(name))
       #endif
     }
 

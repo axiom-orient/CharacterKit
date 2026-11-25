@@ -24,6 +24,27 @@ final class CharacterReferenceFamilyTests: XCTestCase {
     try CharacterSceneBuilder.scene(pose: pose, artDirection: direction, width: 512, height: 560)
   }
 
+  func testReferenceFeatureAliasesKeepTheirNamesAndResolveTheSamePNG() throws {
+    for artwork in CharacterReferenceArtworkID.allCases {
+      let rig = CharacterReferenceCatalog.rig(artwork)
+      let features = rig.layers.filter { [.eyeLeft, .eyeRight, .mouth].contains($0.part) }
+      XCTAssertEqual(features.count, 3)
+      for feature in features {
+        let canonical = try CharacterImageAsset(name: feature.asset + "-black", source: .package)
+        let expected = try CharacterImageResources.png(canonical)
+        for material in [CharacterBodyMaterial.white, .graphite] {
+          let name = feature.asset + "-" + material.rawValue
+          let alias = try CharacterImageAsset(name: name, source: .package)
+          XCTAssertEqual(alias.name, name)
+          XCTAssertEqual(try CharacterImageResources.png(alias), expected)
+          #if os(iOS) || os(macOS)
+            XCTAssertNotNil(CharacterPlatformImageLoader.named(alias))
+          #endif
+        }
+      }
+    }
+  }
+
   func testPortraitPresetsExposeTheirActualAccessory() {
     XCTAssertEqual(CharacterPortraitStyle.HairAccessory.allCases.map(\.rawValue),
                    ["none", "bar", "cross", "flower", "backward-cap"])

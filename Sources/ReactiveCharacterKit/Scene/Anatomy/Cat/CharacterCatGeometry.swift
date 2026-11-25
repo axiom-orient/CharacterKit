@@ -9,7 +9,6 @@ enum CharacterCatMetrics {
   static let eyeY = 306.0
   static let eyeWidth = 112.0
   static let eyeHeight = 124.0
-  static let closedEyeHeight = 0.040
   static let neutralEyeWidth = 0.19
   static let neutralEyeHeight = 0.43
   static let maximumEyeWidth = 152.0

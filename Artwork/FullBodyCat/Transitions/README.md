@@ -1,7 +1,7 @@
 # Felt cat transition artwork
 
 The SDK draws transitions from its 22 approved felt PNGs and
-`full-body-cat-motion-rig.json`. The JSON stores vector outlines and
+`full-body-cat-motion-rig.lzfse`. The compressed JSON stores vector outlines and
 inverse texture coordinates on the 256-point stage for ten routes. Each
 intermediate body samples those textures into a transient 640 × 640 RGBA
 image. The face stays live. The `*-face.json` files register the face in
@@ -80,7 +80,8 @@ python3 Artwork/FullBodyCat/prepare_right_puff_rig.py \
   "$assets" /tmp/felt-puffright.json "$faces/puffright-face.json"
 jq -cs 'add | to_entries | sort_by(.key) | from_entries' /tmp/felt-motion.json \
   /tmp/felt-turn.json /tmp/felt-turn-volume.json /tmp/felt-plant.json /tmp/felt-rear.json \
-  /tmp/felt-belly.json /tmp/felt-puffright.json > "$assets/full-body-cat-motion-rig.json"
+  /tmp/felt-belly.json /tmp/felt-puffright.json > /tmp/felt-runtime-rig.json
+compression_tool -encode -a lzfse -i /tmp/felt-runtime-rig.json -o "$assets/full-body-cat-motion-rig.lzfse"
 python3 Artwork/FullBodyCat/emit_transition_faces.py > \
   Sources/ReactiveCharacterKit/Scene/Anatomy/FullBodyCat/CharacterFeltCatTransitionRegistration.swift
 ```
