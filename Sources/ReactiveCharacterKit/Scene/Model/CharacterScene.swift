@@ -76,6 +76,17 @@ public struct CharacterSceneImage: Sendable, Equatable {
   public let asset: CharacterImageAsset
   public let bounds: CharacterRenderBounds
   public let contentMode: CharacterImageContentMode
+  let feltWalk: CharacterFeltWalkSurface?
+
+  init(
+    asset: CharacterImageAsset, bounds: CharacterRenderBounds, contentMode: CharacterImageContentMode,
+    feltWalk: CharacterFeltWalkSurface? = nil
+  ) {
+    self.asset = asset
+    self.bounds = bounds
+    self.contentMode = contentMode
+    self.feltWalk = feltWalk
+  }
 }
 
 public struct CharacterSceneNode: Sendable, Equatable {

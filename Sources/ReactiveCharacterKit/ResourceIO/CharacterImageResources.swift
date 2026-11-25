@@ -22,11 +22,29 @@ enum CharacterImageResources {
       })
   }()
 
+  private static let fullBodyCat: [String: Result<Data, CharacterImageResolutionError>] =
+    Dictionary(uniqueKeysWithValues: Set(CharacterFullBodyCatArtwork.assets).map { ($0.name, readPackage($0)) })
+
+  static func png(_ image: CharacterSceneImage) throws -> Data {
+    #if os(iOS) || os(macOS)
+      if let walk = image.feltWalk { return try CharacterFeltWalkRenderer.png(walk, name: image.asset.name) }
+    #endif
+    return try png(image.asset)
+  }
+
   static func png(_ asset: CharacterImageAsset) throws -> Data {
     guard asset.source == .package else {
       // An app's compiled asset catalog cannot be exported as a package PNG.
       // Native Canvas supports it; SVG must not invent a substitute.
       throw CharacterImageResolutionError.unavailable(name: asset.name, source: asset.source)
+    }
+    #if os(iOS) || os(macOS)
+      if CharacterFeltCatRigRenderer.isGenerated(asset.name) {
+        return try CharacterFeltCatRigRenderer.png(named: asset.name)
+      }
+    #endif
+    if asset.name.hasPrefix("full-body-cat-"), let result = fullBodyCat[asset.name] {
+      return try result.get()
     }
     return try (bundled[asset.name] ?? readPackage(asset)).get()
   }

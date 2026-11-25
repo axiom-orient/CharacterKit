@@ -33,9 +33,9 @@
       else { throw CharacterPNGExportError.pixelBudgetExceeded(width: width, height: height) }
       var seen = Set<CharacterImageAsset>()
       for node in scene.nodes {
-        guard let asset = node.image?.asset, seen.insert(asset).inserted else { continue }
-        guard CharacterPlatformImageLoader.named(asset) != nil else {
-          throw CharacterImageResolutionError.unavailable(name: asset.name, source: asset.source)
+        guard let image = node.image, image.feltWalk != nil || seen.insert(image.asset).inserted else { continue }
+        guard CharacterPlatformImageLoader.contains(image) else {
+          throw CharacterImageResolutionError.unavailable(name: image.asset.name, source: image.asset.source)
         }
       }
       let renderer = ImageRenderer(content: CharacterSceneCanvas(scene: scene))

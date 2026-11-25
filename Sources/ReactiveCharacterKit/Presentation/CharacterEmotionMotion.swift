@@ -40,3 +40,29 @@ public enum CharacterEmotionMotion: String, Sendable, Equatable, Hashable, CaseI
     }
   }
 }
+
+/// Signed secondary motion channels that blend with the same expression as the face.
+struct CharacterBodyActing: Sendable, Equatable {
+  let vigor: Double
+  let lift: Double
+
+  static let neutral = Self(vigor: 0, lift: 0)
+
+  static func sample(for emotion: CharacterEmotion?) -> Self {
+    let lift: Double = switch emotion {
+    case .joy, .surprise: 0.5
+    case .affection, .gratitude, .interest: 0.25
+    case .anxietyFear, .angerIrritation: -0.35
+    case .sadness, .shameGuilt, .fatigueBurden: -0.5
+    case .calmTrust, .disgustContempt, nil: 0
+    }
+    let vigor = CharacterEmotionMotion.adaptive.dynamics(for: emotion).amplitude - 1
+    return Self(vigor: vigor, lift: lift)
+  }
+
+  func blended(to other: Self, amount: Double) -> Self {
+    let progress = min(1, max(0, amount))
+    return Self(vigor: vigor + (other.vigor - vigor) * progress,
+      lift: lift + (other.lift - lift) * progress)
+  }
+}

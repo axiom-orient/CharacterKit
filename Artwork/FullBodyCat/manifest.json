@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "width": 1672,
+    "height": 941,
+    "sha256": "82c449c8cda29031f4cee1890d3a552026e024cf4d0990f59fe817466667ae51"
+  },
+  "stage": { "width": 256, "height": 256, "groundY": 224 },
+  "walkingProfiles": {
+    "sourcePose": "left",
+    "rightMirrorsLeft": true,
+    "parts": {
+      "near-front": {"pivot": [76.9, 192.5], "foot": [66.4, 217.7]},
+      "far-front": {"pivot": [66.4, 191.1], "foot": [53.1, 213.5]},
+      "near-hind": {"pivot": [191, 190.4], "foot": [195.2, 218.4]},
+      "far-hind": {"pivot": [170.7, 194.6], "foot": [172.8, 214.2]}
+    }
+  },
+  "poses": {
+    "stand": {
+      "sourceCrop": [860, 243, 241, 162],
+      "sourceCenterX": 985,
+      "sourceGroundY": 396,
+      "scale": 1,
+      "headBounds": [43, 97, 97, 82],
+      "eyes": [{"center": [63.5, 142], "size": [8, 13]}, {"center": [96.5, 142.5], "size": [8, 14]}],
+      "nose": {"center": [77.5, 151], "size": [9, 6]},
+      "mouthJunction": [78, 157],
+      "appendage": {"file": "full-body-cat-stand-tail.png", "pivot": [166, 153.5], "draw": "beforeBody"}
+    },
+    "wave": {
+      "sourceCrop": [859, 436, 243, 160],
+      "sourceCenterX": 979,
+      "sourceGroundY": 591,
+      "scale": 1,
+      "headBounds": [50, 81, 94, 84],
+      "eyes": [{"center": [80.5, 125], "size": [8, 13]}, {"center": [114.5, 125], "size": [8, 13]}],
+      "nose": {"center": [97, 133], "size": [9, 6]},
+      "mouthJunction": [97, 137],
+      "appendage": {"file": "full-body-cat-wave-paw.png", "pivot": [85, 176], "draw": "afterBody"}
+    },
+    "loaf": {
+      "sourceCrop": [1130, 242, 243, 160],
+      "sourceCenterX": 1250,
+      "sourceGroundY": 395,
+      "scale": 1,
+      "headBounds": [45, 115, 114, 108],
+      "eyes": [{"center": [77.5, 170.5], "size": [10, 16]}, {"center": [117, 170.5], "size": [9, 16]}],
+      "nose": {"center": [96, 181], "size": [12, 7]},
+      "mouthJunction": [96, 187]
+    },
+    "left": {
+      "sourceCrop": [426, 33, 387, 229],
+      "sourceCenterX": 614,
+      "sourceGroundY": 255,
+      "scale": 0.7,
+      "headBounds": [18.1, 90.3, 83.3, 89.6],
+      "eyes": [{"center": [27.2, 136.5], "size": [7.7, 13.3]}]
+    },
+    "right": {
+      "sourceCrop": [428, 306, 382, 230],
+      "sourceCenterX": 619,
+      "sourceGroundY": 525,
+      "scale": 0.7,
+      "headBounds": [151.1, 90.3, 84, 86.1],
+      "eyes": [{"center": [224.6, 137.2], "size": [7, 12.6]}]
+    },
+    "rear": {
+      "sourceCrop": [104, 297, 235, 240],
+      "sourceCenterX": 218,
+      "sourceGroundY": 528,
+      "scale": 0.73,
+      "headBounds": [67.4, 77.3, 123.4, 86.9],
+      "eyes": []
+    },
+    "upright": {
+      "sourceCrop": [1433, 243, 190, 163],
+      "sourceCenterX": 1532,
+      "sourceGroundY": 401,
+      "scale": 1,
+      "headBounds": [64, 73, 97, 72],
+      "eyes": [{"center": [89.5, 110], "size": [8, 12]}, {"center": [122.5, 110], "size": [8, 13]}],
+      "nose": {"center": [104.5, 117.5], "size": [8, 6]},
+      "mouthJunction": [105, 122]
+    },
+    "puff": {
+      "sourceCrop": [1121, 433, 239, 163],
+      "sourceCenterX": 1244,
+      "sourceGroundY": 589,
+      "scale": 1,
+      "headBounds": [34, 101, 79, 83],
+      "eyes": [{"center": [44, 147], "size": [7, 12]}]
+    },
+    "belly": {
+      "sourceCrop": [1391, 463, 260, 137],
+      "sourceCenterX": 1522,
+      "sourceGroundY": 589,
+      "scale": 0.92,
+      "headBounds": [26.8, 141.2, 76.4, 81.9],
+      "faceRotationDegrees": -90,
+      "eyes": [{"center": [71, 160.5], "size": [7.5, 12]}, {"center": [71, 197.8], "size": [7.5, 12]}],
+      "nose": {"center": [82, 176.2], "size": [9, 6]},
+      "mouthJunction": [88.4, 178]
+    },
+    "stretch": {
+      "sourceCrop": [237, 665, 289, 217],
+      "sourceCenterX": 383,
+      "sourceGroundY": 875,
+      "scale": 0.82,
+      "headBounds": [42, 90, 85, 87],
+      "eyes": [{"center": [56.7, 134], "size": [7.4, 13]}, {"center": [86.6, 136], "size": [8.2, 13]}],
+      "nose": {"center": [69.8, 143.6], "size": [9, 6]},
+      "mouthJunction": [69, 147]
+    }
+  }
+}

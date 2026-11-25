@@ -1,0 +1,92 @@
+{
+  "alignGround": true,
+  "eyes": [
+    [
+      1130.5346049046323,
+      553.1471389645776
+    ]
+  ],
+  "groundY": 1031,
+  "pixelsPerPoint": 4,
+  "placement": {
+    "scaleX": 0.18762344869242528,
+    "scaleY": 0.18164587277330474,
+    "sourceAnchor": [
+      1130.5346049046323,
+      553.1471389645776
+    ],
+    "stageAnchor": [
+      224.6,
+      137.2
+    ]
+  },
+  "pose": "right",
+  "preserveReferenceSilhouette": false,
+  "sourceCrop": [
+    22,
+    189,
+    1207,
+    863
+  ],
+  "sourceFaceEdge": {
+    "keepLargerX": false,
+    "xAtY": [
+      [
+        550,
+        1186
+      ],
+      [
+        565,
+        1190
+      ],
+      [
+        577,
+        1192
+      ],
+      [
+        592,
+        1194
+      ],
+      [
+        606,
+        1194
+      ],
+      [
+        620,
+        1194
+      ],
+      [
+        635,
+        1192
+      ],
+      [
+        650,
+        1190
+      ],
+      [
+        663,
+        1186
+      ],
+      [
+        680,
+        1179
+      ]
+    ]
+  },
+  "sourceFacePatches": [
+    [
+      1099,
+      509,
+      63,
+      92
+    ],
+    [
+      1149,
+      567,
+      72,
+      115
+    ]
+  ],
+  "sourceFileName": "right.png",
+  "sourceSHA256": "32f02fd497c6b9390b611644593b5e5724d5adc6038eba69e2090a46fd0e13c2"
+}

@@ -4,6 +4,7 @@ import Foundation
 enum CharacterAppearanceInput {
   case design(CharacterDesign)
   case art(CharacterArtDirection)
+  case fullBodyCat(CharacterFullBodyCatAppearance, CharacterFullBodyCatMotion)
 }
 
 /// Values only: resolution must never load an image, inspect a bundle or consult a clock.
@@ -11,6 +12,7 @@ struct ResolvedCharacterAppearance {
   enum Payload {
     case design(Design)
     case art(CharacterArtDirection)
+    case fullBodyCat(CharacterFullBodyCatAppearance, CharacterFullBodyCatMotion)
   }
 
   struct Design {
@@ -73,6 +75,14 @@ struct ResolvedCharacterAppearance {
         bounds: board, mode: simplified ? .flat : .sculpted,
         compact: min(board.width, board.height) < CharacterRenderLimits.artCompactBelow,
         simplified: simplified, payload: .art(direction))
+    case .fullBodyCat(let appearance, let motion):
+      // Leave a small margin for the tail arcs and the one-shot surface transforms.
+      let size = min(width, height) * 0.92
+      let board = CharacterRect(x: (width - size) / 2, y: (height - size) / 2, width: size, height: size)
+      return Self(
+        bounds: board, mode: simplified ? .flat : .sculpted,
+        compact: size < CharacterRenderLimits.artCompactBelow, simplified: simplified,
+        payload: .fullBodyCat(appearance, motion))
     }
   }
 }

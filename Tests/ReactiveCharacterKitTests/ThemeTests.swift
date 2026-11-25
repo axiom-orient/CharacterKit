@@ -102,6 +102,41 @@ final class ThemeTests: XCTestCase {
       "neutral silent face must not render a rest mouth")
   }
 
+  func testHeadsetGesturesFitInTheViewportAndKeepTheNeutralSize() throws {
+    let id = try CharacterAnimationID(validating: "headset-viewport")
+    let surprised = ReactiveCharacter.reduce(state: .idle, event: .emotionChanged(.surprise)).state
+    for direction: CharacterArtDirection in [.black, .white, .arcade] {
+      let rest = ReactiveCharacter.pose(state: .idle, elapsed: 0,
+        artDirection: direction, reduceMotion: true)
+      let neutral = try CharacterSceneBuilder.scene(
+        pose: rest, artDirection: direction, width: 256, height: 256)
+      XCTAssertEqual(neutral.surfaceTransform, .identity)
+
+      for animation in CharacterAnimation.allCases {
+        let animated = ReactiveCharacter.reduce(state: surprised,
+          event: .animationStarted(id: id, animation: animation)).state
+        for fraction in [0.25, 0.50, 0.76] {
+          let pose = ReactiveCharacter.pose(state: animated, elapsed: animation.duration * fraction,
+            artDirection: direction)
+          let scene = try CharacterSceneBuilder.scene(
+            pose: pose, artDirection: direction, width: 256, height: 256)
+          XCTAssertEqual(scene.faceBounds, neutral.faceBounds)
+          let headset = try XCTUnwrap(scene.nodes.first { $0.id == "art.accessory.0" })
+          let bounds = try XCTUnwrap(headset.image).bounds.rect
+          let t = headset.transform
+          for x in [bounds.minX, bounds.maxX] {
+            for y in [bounds.minY, bounds.maxY] {
+              let viewportX = t.a * x + t.c * y + t.tx
+              let viewportY = t.b * x + t.d * y + t.ty
+              XCTAssertTrue((0.5...255.5).contains(viewportX), "\(direction.name) \(animation)")
+              XCTAssertTrue((0.5...255.5).contains(viewportY), "\(direction.name) \(animation)")
+            }
+          }
+        }
+      }
+    }
+  }
+
   func testBlackAgentWritingCreatesAndThenHidesOutputMouthWave() throws {
     let direction = CharacterTheme.black.artDirection
     let task = try CharacterTaskID(validating: "black-output")

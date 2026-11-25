@@ -149,4 +149,5 @@ public struct CharacterPose: Sendable, Equatable {
   var faceDynamics: CharacterFaceDynamics = .neutral
   /// Bounded sampled channels for renderer-owned secondary detail motion.
   var detailMotion: CharacterDetailMotion = .still
+  var bodyActing: CharacterBodyActing = .neutral
 }

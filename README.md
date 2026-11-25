@@ -9,7 +9,7 @@ The interactive macOS app is maintained separately in
 ## Install
 
 ```swift
-.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.0.1")
+.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.1.0")
 ```
 
 Add the `ReactiveCharacterKit` product to your target.
@@ -48,6 +48,25 @@ Use `ReactiveCharacterGIFView(state:playbackTrigger:)` for the single Norwegian 
 Its twelve emotion clips start/end on identical neutral pixels. Increment the trigger
 once per expression cue to replay the same emotion. Voice, gaze and action updates
 continue independently without restarting a clip.
+
+The full-body black cat comes in `.felt` and `.crayon` styles. Both use the
+same expression, gaze, action and speech inputs. Select a resting pose and
+pass an independent one-shot body gesture:
+
+```swift
+ReactiveCharacterView(
+  state: state,
+  fullBodyCat: .init(pose: .standing, action: .wave, actionTrigger: waveCount, style: .felt)
+)
+```
+
+Felt uses registered wool textures for the body. Crayon uses editable vector
+shapes. Both support a forepaw wave, a four-beat in-place walk, a hop, a stretch,
+bristling in either direction, and a belly roll. The live face still follows the
+host's expression and speech.
+The gesture returns to the selected pose when it finishes. Increment the trigger to
+repeat it and pass `nil` to cancel it. For a deterministic PNG or SVG frame, build
+a scene with `CharacterSceneBuilder.scene(pose:fullBodyCat:width:height:elapsed:)`.
 
 For timed speech, send `.voiceStarted` and measured `.voiceLevelChanged` events, then
 apply `.characterSpeechArticulation(frame)` to either view. `frame` is a validated

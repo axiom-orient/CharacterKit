@@ -41,6 +41,8 @@
     @State private var speechPresentation = CharacterSpeechPresentation()
     @State private var presentation: CharacterPresentationSession
     @State private var appliedPoseConfiguration: PoseConfiguration
+    @State private var fullBodyCatPlayback: CharacterFullBodyCatPlayback
+    @State private var reducedBodySampleTime = 0.0
 
     private var poseConfiguration: PoseConfiguration {
       PoseConfiguration(
@@ -86,6 +88,8 @@
         )
       )
       _appliedPoseConfiguration = State(initialValue: initialPoseConfiguration)
+      _fullBodyCatPlayback = State(initialValue: CharacterFullBodyCatPlayback(
+        appearance: source.fullBodyCat, at: CharacterPresentationTime.now))
     }
 
     var body: some View {
@@ -107,6 +111,36 @@
       }
       .onAppear { speechPresentation.update(speechArticulation, at: CharacterPresentationTime.now) }
       .onChange(of: speechArticulation) { speechPresentation.update($0, at: CharacterPresentationTime.now) }
+      .onChange(of: source.fullBodyCat) {
+        fullBodyCatPlayback.update(appearance: $0, at: CharacterPresentationTime.now)
+      }
+      .task(id: shouldPrepareFeltTextures) {
+        guard shouldPrepareFeltTextures else { return }
+        await withTaskGroup(of: Void.self) { group in
+          group.addTask(priority: .utility) {
+            CharacterFeltCatRigRenderer.prepareForInteractivePlayback()
+          }
+        }
+      }
+      .task(id: feltWalkPreparation) {
+        guard let side = feltWalkPreparation else { return }
+        await withTaskGroup(of: Void.self) { group in
+          group.addTask(priority: .utility) {
+            guard !Task.isCancelled else { return }
+            CharacterFeltWalkRenderer.prepare(side)
+          }
+        }
+      }
+      .task(id: reducedBodyDeadline) {
+        // A single wake-up returns a reduced-motion pose to rest without enabling frame ticks.
+        guard let deadline = reducedBodyDeadline else { return }
+        let remaining = max(0, deadline - CharacterPresentationTime.now)
+        do {
+          try await Task.sleep(nanoseconds: UInt64((remaining * 1_000_000_000).rounded(.up)))
+          guard !Task.isCancelled, deadline == reducedBodyDeadline else { return }
+          reducedBodySampleTime = deadline
+        } catch {}
+      }
       .onChange(of: sessionInput) { input in
         let now = CharacterPresentationTime.now
         if input.poseConfiguration != appliedPoseConfiguration {
@@ -123,6 +157,19 @@
           transitionProfile: input.transitionProfile
         )
       }
+    }
+
+    private var shouldPrepareFeltTextures: Bool {
+      source.fullBodyCat?.style == .felt && scenePhase == .active && !accessibilityReduceMotion
+    }
+
+    private var feltWalkPreparation: CharacterFullBodyCatPose? {
+      guard shouldPrepareFeltTextures, let appearance = source.fullBodyCat, appearance.action == .walk else { return nil }
+      return appearance.walkingPose
+    }
+
+    private var reducedBodyDeadline: Double? {
+      accessibilityReduceMotion ? fullBodyCatPlayback.deadline : nil
     }
 
     @ViewBuilder
@@ -145,6 +192,14 @@
           pose: pose, design: design, partColors: partColors,
           overlayAccents: overlayAccents,
           accessoryOverlays: accessoryOverlays
+        )
+      case .fullBodyCat(let appearance):
+        CharacterFullBodyCatFrame(
+          pose: pose,
+          appearance: appearance,
+          motion: fullBodyCatPlayback.sample(
+            appearance: appearance, at: reduceMotion ? max(time, reducedBodySampleTime) : time,
+            reduceMotion: reduceMotion)
         )
       }
     }

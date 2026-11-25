@@ -1,0 +1,25 @@
+{
+  "alignGround": true,
+  "eyes": [
+    [
+      282.97119341563786,
+      616.1148522259633
+    ],
+    [
+      553.0123903926801,
+      617.1216164696912
+    ]
+  ],
+  "groundY": 995,
+  "pixelsPerPoint": 4,
+  "pose": "loaf",
+  "preserveReferenceSilhouette": false,
+  "sourceCrop": [
+    29,
+    206,
+    1193,
+    810
+  ],
+  "sourceFileName": "exec-ffa62f8a-3362-49c9-b78c-63105406cb5a.png",
+  "sourceSHA256": "2345765c4541ba6dcc2c86db90b1390640a0d8cd9c2245e82762cc6f2885a49c"
+}

@@ -215,7 +215,8 @@ enum CharacterMotion {
       eyeContours: expression.eyeContours,
       brows: expression.brows,
       faceDynamics: faceDynamics,
-      detailMotion: detailMotion
+      detailMotion: detailMotion,
+      bodyActing: reduceMotion || profile.expressiveness == 0 ? .neutral : .sample(for: state.emotion)
     )
   }
 

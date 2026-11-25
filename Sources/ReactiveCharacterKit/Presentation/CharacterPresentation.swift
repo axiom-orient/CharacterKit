@@ -640,7 +640,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       eyeContours: pose.eyeContours,
       brows: pose.brows,
       faceDynamics: pose.faceDynamics,
-      detailMotion: from.detailMotion.blended(to: pose.detailMotion, amount: amount)
+      detailMotion: from.detailMotion.blended(to: pose.detailMotion, amount: amount),
+      bodyActing: from.bodyActing.blended(to: pose.bodyActing, amount: amount)
     )
   }
 
@@ -717,7 +718,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       eyeContours: from.eyeContours.blended(to: to.eyeContours, amount: amount),
       brows: from.brows.blended(to: to.brows, amount: amount),
       faceDynamics: from.faceDynamics.blended(to: to.faceDynamics, amount: amount),
-      detailMotion: from.detailMotion.blended(to: to.detailMotion, amount: amount)
+      detailMotion: from.detailMotion.blended(to: to.detailMotion, amount: amount),
+      bodyActing: from.bodyActing.blended(to: to.bodyActing, amount: amount)
     )
   }
 
@@ -771,7 +773,8 @@ public struct CharacterPresentationSession: Sendable, Equatable {
       eyeContours: CharacterEyeContourPair.neutral.blended(to: pose.eyeContours, amount: progress),
       brows: CharacterBrowPairPose.neutral.blended(to: pose.brows, amount: progress),
       faceDynamics: neutral.faceDynamics.blended(to: pose.faceDynamics, amount: progress),
-      detailMotion: neutral.detailMotion.blended(to: pose.detailMotion, amount: progress)
+      detailMotion: neutral.detailMotion.blended(to: pose.detailMotion, amount: progress),
+      bodyActing: neutral.bodyActing.blended(to: pose.bodyActing, amount: progress)
     )
   }
 

@@ -1,0 +1,106 @@
+{
+  "alignGround": true,
+  "eyes": [
+    [
+      91.18553459119497,
+      550.3144654088051
+    ]
+  ],
+  "groundY": 1023,
+  "pixelsPerPoint": 4,
+  "placement": {
+    "scaleX": 0.18626136451391506,
+    "scaleY": 0.18511249783785944,
+    "sourceAnchor": [
+      91.18553459119497,
+      550.3144654088051
+    ],
+    "stageAnchor": [
+      27.2,
+      136.5
+    ]
+  },
+  "pose": "left",
+  "preserveReferenceSilhouette": false,
+  "sourceCrop": [
+    10,
+    145,
+    1233,
+    899
+  ],
+  "sourceFaceEdge": {
+    "keepLargerX": true,
+    "xAtY": [
+      [
+        520,
+        54
+      ],
+      [
+        535,
+        50
+      ],
+      [
+        550,
+        48
+      ],
+      [
+        565,
+        46
+      ],
+      [
+        577,
+        45
+      ],
+      [
+        590,
+        44
+      ],
+      [
+        606,
+        44
+      ],
+      [
+        624,
+        44
+      ],
+      [
+        638,
+        46
+      ],
+      [
+        651,
+        48
+      ],
+      [
+        660,
+        52
+      ],
+      [
+        680,
+        60
+      ]
+    ]
+  },
+  "sourceFacePatches": [
+    [
+      60,
+      505,
+      64,
+      94
+    ],
+    [
+      18,
+      565,
+      62,
+      108
+    ],
+    [
+      33,
+      514,
+      34,
+      61
+    ]
+  ],
+  "sourceFileName": "left.png",
+  "sourceSHA256": "65e1e5690f16a0f3dc87b53390ffb0ddc8e0b9d97091c3c36437fa7a5a09efef"
+}

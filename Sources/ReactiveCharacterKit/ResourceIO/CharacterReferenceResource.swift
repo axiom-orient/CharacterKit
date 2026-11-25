@@ -19,6 +19,26 @@ import Foundation
 
   /// Platform image I/O only. Pose, scene construction and geometry are shared unchanged.
   enum CharacterPlatformImageLoader {
+    static func resolve(_ image: CharacterSceneImage) -> (image: Image, size: CGSize)? {
+      if let walk = image.feltWalk {
+        return CharacterFeltWalkRenderer.image(walk).map(canvasImage)
+      }
+      let asset = image.asset
+      if asset.source == .package, CharacterFeltCatRigRenderer.isGenerated(asset.name) {
+        return CharacterFeltCatRigRenderer.image(named: asset.name).map(canvasImage)
+      }
+      return named(asset).map { ($0.characterSwiftUIImage, $0.size) }
+    }
+
+    static func contains(_ image: CharacterSceneImage) -> Bool {
+      if let walk = image.feltWalk { return CharacterFeltWalkRenderer.hasSource(walk) }
+      let asset = image.asset
+      if asset.source == .package, CharacterFeltCatRigRenderer.isGenerated(asset.name) {
+        return CharacterFeltCatRigRenderer.hasSource(named: asset.name)
+      }
+      return named(asset) != nil
+    }
+
     static func load(url: URL?, name: String) throws -> CharacterPlatformImage {
       guard let url, let image = CharacterPlatformImage(contentsOfFile: url.path) else {
         throw CharacterReferenceResourceError.unavailable(name)
@@ -32,6 +52,11 @@ import Foundation
       #else
         return bundle.image(forResource: NSImage.Name(asset.name))
       #endif
+    }
+
+    private static func canvasImage(_ image: CGImage) -> (image: Image, size: CGSize) {
+      // Generated frames already own their pixels and do not need a platform image wrapper.
+      (Image(decorative: image, scale: 1), CGSize(width: image.width, height: image.height))
     }
   }
   extension CharacterPlatformImage {

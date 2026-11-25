@@ -1,0 +1,28 @@
+{
+  "alignGround": true,
+  "eyes": [],
+  "groundY": 1188,
+  "pixelsPerPoint": 4,
+  "placement": {
+    "scaleX": 0.15492957746478872,
+    "scaleY": 0.14618834080717488,
+    "sourceAnchor": [
+      613.0,
+      1188
+    ],
+    "stageAnchor": [
+      128.0,
+      224
+    ]
+  },
+  "pose": "rear",
+  "preserveReferenceSilhouette": false,
+  "sourceCrop": [
+    203,
+    53,
+    821,
+    1156
+  ],
+  "sourceFileName": "rear.png",
+  "sourceSHA256": "4577802a21611c429633b407149e39cc9da43ddd3f9c60cc94e935eae37fe5e6"
+}

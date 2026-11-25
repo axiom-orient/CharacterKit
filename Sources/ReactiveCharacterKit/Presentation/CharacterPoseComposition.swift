@@ -32,6 +32,6 @@ extension CharacterPose {
       writingProgress: writingProgress, writingVisible: writingVisible,
       writingOpacity: writingOpacity, accents: accents, motionEnergy: motionEnergy,
       eyeContours: eyeContours, brows: brows, faceDynamics: faceDynamics,
-      detailMotion: detailMotion)
+      detailMotion: detailMotion, bodyActing: bodyActing)
   }
 }

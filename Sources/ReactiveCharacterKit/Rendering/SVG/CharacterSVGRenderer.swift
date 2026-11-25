@@ -59,11 +59,11 @@ public enum CharacterSVGRenderer {
       }
       if let image = node.image {
         let encodedImage: String
-        if let cached = embeddedImages[image.asset] {
+        if image.feltWalk == nil, let cached = embeddedImages[image.asset] {
           encodedImage = cached
         } else {
-          encodedImage = try CharacterImageResources.png(image.asset).base64EncodedString()
-          embeddedImages[image.asset] = encodedImage
+          encodedImage = try CharacterImageResources.png(image).base64EncodedString()
+          if image.feltWalk == nil { embeddedImages[image.asset] = encodedImage }
         }
         let r = image.bounds
         let fit = image.contentMode == .fit ? "xMidYMid meet" : "xMidYMid slice"

@@ -35,6 +35,21 @@
       self.init(state: state, artDirection: .black)
     }
 
+    /// The textured full-body cat shares the existing expression and speech pipeline.
+    public init(
+      state: CharacterState,
+      fullBodyCat: CharacterFullBodyCatAppearance,
+      accessibilityLabel: String = "Black cat",
+      accessibilityValue: String? = nil
+    ) {
+      self.source = .fullBodyCat(fullBodyCat)
+      self.state = state
+      self.overlayAccents = []
+      self.accessoryOverlays = []
+      self.accessibilityLabel = accessibilityLabel
+      self.hostAccessibilityValue = accessibilityValue
+    }
+
     public init(
       state: CharacterState,
       artDirection: CharacterArtDirection = .black,

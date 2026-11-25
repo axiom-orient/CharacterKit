@@ -54,6 +54,20 @@ emotion curvature and all gaze, body and action channels. Nil restores ordinary
 articulation. Custom renderers can apply the value to a sampled pose. The SDK does
 not infer sentiment, estimate phonemes or create audio.
 
+## Full-body cats
+
+`CharacterFullBodyCatAppearance` carries the resting pose, body gesture and cue
+identity. `CharacterFullBodyCatPlayback` manages playback and interruption on the
+presentation clock. Expression, gaze and speech still come from the sampled
+`CharacterPose` supplied by the host.
+
+The scene compiler keeps each style's geometry separate. Crayon builds vector
+contours and blends them across poses. Felt scene nodes describe registered body
+textures, joint motion and the live face. The rendering boundary resolves those
+requests from package assets and composes the wool surfaces. SwiftUI Canvas,
+PNG and SVG use the same scene. Asset preparation stays in
+[Artwork/FullBodyCat](../Artwork/FullBodyCat/README.md).
+
 ## SEMI
 
 The SEMI renderer uses connected closed mouth strokes and three whiskers per cheek.

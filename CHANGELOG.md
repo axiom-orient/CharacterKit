@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0
+
+- Add felt and crayon full-body cats with ten resting poses and six gestures. Both use the shared expression, gaze and speech inputs.
+- Use a shared animated envelope for headset appearances so accessory selection preserves the face geometry.
+- Pass generated felt frames directly to Canvas to reduce first-draw latency.
+
 ## 2.0.1
 
 - Make GIF mouth-mask arithmetic explicitly Double so Swift 6.0/6.1 toolchains compile

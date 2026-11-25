@@ -34,8 +34,8 @@
     static func missingImageAccessibilityValue(in scene: CharacterScene) -> String {
       var seen = Set<CharacterImageAsset>()
       return scene.nodes.compactMap { node -> String? in
-        guard let image = node.image, seen.insert(image.asset).inserted else { return nil }
-        return CharacterPlatformImageLoader.named(image.asset) == nil
+        guard let image = node.image, image.feltWalk != nil || seen.insert(image.asset).inserted else { return nil }
+        return !CharacterPlatformImageLoader.contains(image)
           ? "Missing image: \(image.asset.name)" : nil
       }.joined(separator: ", ")
     }
@@ -59,8 +59,8 @@
           part.opacity *= node.opacity
           if let image = node.image {
             let rect = image.bounds.rect.cgRect
-            if let uiImage = CharacterPlatformImageLoader.named(image.asset) {
-              let size = uiImage.size
+            if let resolved = CharacterPlatformImageLoader.resolve(image) {
+              let size = resolved.size
               let scale =
                 image.contentMode == .fit
                 ? min(rect.width / size.width, rect.height / size.height)
@@ -70,7 +70,7 @@
                 y: rect.midY - size.height * scale / 2,
                 width: size.width * scale, height: size.height * scale)
               part.clip(to: Path(rect))
-              part.draw(part.resolve(uiImage.characterSwiftUIImage), in: destination)
+              part.draw(part.resolve(resolved.image), in: destination)
             } else {
               // A named required resource failing to resolve is visible, never silently skipped.
               part.stroke(Path(rect), with: .color(.red), lineWidth: 2)
