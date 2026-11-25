@@ -116,13 +116,14 @@ struct CharacterFeltCatTransition: Equatable, Sendable {
     }
 
     fileprivate func asset(at frame: Int) -> CharacterImageAsset {
-      .init(uncheckedName: "full-body-cat-transition-\(assetKey)-\(frame)", source: .package)
+      .init(uncheckedName: "\(CharacterFeltCatTransition.assetNamePrefix)\(assetKey)-\(frame)", source: .package)
     }
   }
 
   static let intervals = 12
-  static let assets = Route.allCases.flatMap { route in
-    route.authoredFrames.map { route.asset(at: $0) }
+  static let assetNamePrefix = "full-body-cat-transition-"
+  static let entryAssets = Route.allCases.compactMap { route in
+    route.authoredFrames.first.map { route.asset(at: $0) }
   }
 
   struct Segment: Sendable {

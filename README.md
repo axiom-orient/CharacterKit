@@ -7,7 +7,7 @@ is a separate project. [CharacterStudio](https://github.com/axiom-orient/Charact
 ## Install
 
 ```swift
-.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.1.1")
+.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.1.2")
 ```
 
 Add the `ReactiveCharacterKit` library product to your target.

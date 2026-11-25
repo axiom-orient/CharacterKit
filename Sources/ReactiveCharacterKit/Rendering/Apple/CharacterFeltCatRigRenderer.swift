@@ -2,14 +2,12 @@
   import CoreGraphics
   import Foundation
   import ImageIO
-  import UniformTypeIdentifiers
 
   /// Renders transient poses from vector contours, inverse texture maps, and bundled wool.
   enum CharacterFeltCatRigRenderer {
     static let pixelSize = 640
     private static let stageSize: Float = 256
     private static let mapSize = 17
-    private static let namePrefix = "full-body-cat-transition-"
     private static let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
     private static let bitmapInfo = CGBitmapInfo.byteOrder32Big.union(
       CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue))
@@ -185,18 +183,19 @@
 
       // Render only the entry frame of each route to prime the mask sampler
       // off the main thread. The rest are still generated on demand.
-      for route in rig.keys.sorted() {
+      for asset in CharacterFeltCatTransition.entryAssets {
         if Task.isCancelled { return }
-        _ = image(named: "\(namePrefix)\(route)-1")
+        _ = image(named: asset.name)
       }
     }
 
     private static func request(named name: String) -> (route: String, frame: Int)? {
-      guard name.hasPrefix(namePrefix) else { return nil }
-      let suffix = name.dropFirst(namePrefix.count)
+      let prefix = CharacterFeltCatTransition.assetNamePrefix
+      guard name.hasPrefix(prefix) else { return nil }
+      let suffix = name.dropFirst(prefix.count)
       guard let separator = suffix.lastIndex(of: "-"),
         let frame = Int(suffix[suffix.index(after: separator)...]),
-        (1...11).contains(frame),
+        (1..<CharacterFeltCatTransition.intervals).contains(frame),
         suffix[suffix.index(after: separator)...] == String(frame)
       else { return nil }
       let route = suffix[..<separator]
@@ -248,15 +247,10 @@
       guard let image = image(named: name) else {
         throw CharacterImageResolutionError.unavailable(name: name, source: .package)
       }
-      let data = NSMutableData()
-      guard let destination = CGImageDestinationCreateWithData(
-        data, UTType.png.identifier as CFString, 1, nil)
-      else { throw CharacterImageResolutionError.invalidPNG(name: name) }
-      CGImageDestinationAddImage(destination, image, nil)
-      guard CGImageDestinationFinalize(destination) else {
+      guard let data = CharacterNativePNGEncoder.data(for: image) else {
         throw CharacterImageResolutionError.invalidPNG(name: name)
       }
-      return data as Data
+      return data
     }
 
     private struct Mask {

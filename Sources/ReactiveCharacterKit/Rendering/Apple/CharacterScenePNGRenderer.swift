@@ -48,14 +48,20 @@
         return data
       #else
         guard let image = renderer.cgImage else { throw CharacterPNGExportError.renderingUnavailable }
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else {
-          throw CharacterPNGExportError.encodingFailed
-        }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { throw CharacterPNGExportError.encodingFailed }
-        return data as Data
+        guard let data = CharacterNativePNGEncoder.data(for: image) else { throw CharacterPNGExportError.encodingFailed }
+        return data
       #endif
+    }
+  }
+
+  enum CharacterNativePNGEncoder {
+    static func data(for image: CGImage) -> Data? {
+      let bytes = NSMutableData()
+      guard let destination = CGImageDestinationCreateWithData(
+        bytes, UTType.png.identifier as CFString, 1, nil)
+      else { return nil }
+      CGImageDestinationAddImage(destination, image, nil)
+      return CGImageDestinationFinalize(destination) ? bytes as Data : nil
     }
   }
 #endif

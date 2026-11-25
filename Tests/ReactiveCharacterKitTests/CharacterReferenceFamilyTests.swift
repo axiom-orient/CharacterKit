@@ -39,6 +39,9 @@ final class CharacterReferenceFamilyTests: XCTestCase {
           XCTAssertEqual(try CharacterImageResources.png(alias), expected)
           #if os(iOS) || os(macOS)
             XCTAssertNotNil(CharacterPlatformImageLoader.named(alias))
+            let filename = try CharacterImageAsset(name: name + ".png", source: .package)
+            let native = try XCTUnwrap(CharacterPlatformImageLoader.named(filename))
+            XCTAssertEqual(native.size, CharacterPlatformImageLoader.named(canonical)?.size)
           #endif
         }
       }

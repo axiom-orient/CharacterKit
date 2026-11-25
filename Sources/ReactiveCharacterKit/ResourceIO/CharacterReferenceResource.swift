@@ -47,12 +47,17 @@ import Foundation
     }
     static func named(_ asset: CharacterImageAsset) -> CharacterPlatformImage? {
       let bundle: Bundle = asset.source == .package ? .module : .main
-      let name = asset.source == .package ? CharacterPackageResource.pngName(asset.name) : asset.name
+      let name = asset.source == .package ? packagedImageName(asset.name) : asset.name
       #if os(iOS)
         return UIImage(named: name, in: bundle, compatibleWith: nil)
       #else
         return bundle.image(forResource: NSImage.Name(name))
       #endif
+    }
+
+    private static func packagedImageName(_ name: String) -> String {
+      guard name.hasSuffix(".png") else { return CharacterPackageResource.pngName(name) }
+      return CharacterPackageResource.pngName(String(name.dropLast(".png".count))) + ".png"
     }
 
     private static func canvasImage(_ image: CGImage) -> (image: Image, size: CGSize) {

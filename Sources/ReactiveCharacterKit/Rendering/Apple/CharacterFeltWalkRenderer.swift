@@ -152,13 +152,10 @@
       guard let image = image(surface) else {
         throw CharacterImageResolutionError.unavailable(name: name, source: .package)
       }
-      let bytes = NSMutableData()
-      guard let destination = CGImageDestinationCreateWithData(
-        bytes, UTType.png.identifier as CFString, 1, nil)
-      else { throw CharacterImageResolutionError.invalidPNG(name: name) }
-      CGImageDestinationAddImage(destination, image, nil)
-      guard CGImageDestinationFinalize(destination) else { throw CharacterImageResolutionError.invalidPNG(name: name) }
-      return bytes as Data
+      guard let bytes = CharacterNativePNGEncoder.data(for: image) else {
+        throw CharacterImageResolutionError.invalidPNG(name: name)
+      }
+      return bytes
     }
 
     private static func render(_ surface: CharacterFeltWalkSurface, binding: Binding) -> Data {
@@ -203,8 +200,10 @@
     }
 
     private static func read(_ asset: CharacterImageAsset, clip: CharacterVectorPath? = nil) -> [UInt32]? {
-      guard let data = try? CharacterImageResources.png(asset),
-        let source = CGImageSourceCreateWithData(data as CFData, nil),
+      guard asset.source == .package,
+        let url = try? CharacterPackageResource.url(named: asset.name, fileExtension: "png"),
+        let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        CGImageSourceGetType(source) as String? == UTType.png.identifier,
         let image = CGImageSourceCreateImageAtIndex(source, 0, nil), image.width == size, image.height == size
       else { return nil }
       var pixels = [UInt32](repeating: 0, count: size * size)

@@ -179,6 +179,19 @@ struct CharacterFullBodyCatTests {
     #expect(crayon.transition == nil)
   }
 
+  @Test
+  func feltWarmupUsesTheFirstAuthoredFrameOfEachRoute() {
+    let routes = CharacterFeltCatTransition.Route.allCases
+    let firstFrames = routes.compactMap { route in
+      let routePrefix = CharacterFeltCatTransition.assetNamePrefix + route.assetKey + "-"
+      return (1..<route.intervals).lazy.compactMap { index in
+        CharacterFeltCatTransition(route: route, progress: Double(index) / Double(route.intervals)).frameAsset
+      }.first { $0.name.hasPrefix(routePrefix) }
+    }
+    #expect(firstFrames.count == routes.count)
+    #expect(CharacterFeltCatTransition.entryAssets == firstFrames)
+  }
+
   @Test(arguments: CharacterFeltCatTransition.Route.allCases)
   func interruptingAPoseTransitionReversesFromTheCurrentlyVisibleFrame(
     _ route: CharacterFeltCatTransition.Route

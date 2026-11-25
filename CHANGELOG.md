@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2
+
+- Resolve native PNG aliases with or without the filename extension.
+- Load only the textures for the active walking direction and warm the first authored frame for each felt route.
+- Share ImageIO PNG encoding across felt and macOS scene export.
+
 ## 2.1.1
 
 - Reduce the runtime resource payload with a losslessly compressed felt motion atlas and optimized PNGs.
