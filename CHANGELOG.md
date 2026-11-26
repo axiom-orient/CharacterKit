@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3
+
+- Keep SVG zero coordinates in floating-point format to avoid Foundation formatting warnings on iOS.
+- Add an explicit simulator option that runs the full iOS test suite and simplify the Swift 6 package configuration.
+
 ## 2.1.2
 
 - Resolve native PNG aliases with or without the filename extension.

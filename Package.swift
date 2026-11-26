@@ -16,19 +16,11 @@ let package = Package(
   targets: [
     .target(
       name: "ReactiveCharacterKit",
-      resources: [
-        .process("Resources")
-      ],
-      swiftSettings: [
-        .swiftLanguageMode(.v6)
-      ]
+      resources: [.process("Resources")]
     ),
     .testTarget(
       name: "ReactiveCharacterKitTests",
-      dependencies: ["ReactiveCharacterKit"],
-      swiftSettings: [
-        .swiftLanguageMode(.v6)
-      ]
+      dependencies: ["ReactiveCharacterKit"]
     ),
   ],
   swiftLanguageModes: [.v6]

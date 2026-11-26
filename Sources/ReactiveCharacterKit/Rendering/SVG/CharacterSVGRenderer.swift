@@ -131,7 +131,8 @@ public enum CharacterSVGRenderer {
   }
 
   static func number(_ value: Double) -> String {
-    String(format: "%.6f", locale: numberLocale, value == 0 ? 0 : value)
+    let normalized: Double = value == 0 ? 0 : value
+    return String(format: "%.6f", locale: numberLocale, normalized)
   }
 
   static func hex(_ c: CharacterColor) -> String {

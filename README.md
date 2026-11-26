@@ -7,7 +7,7 @@ is a separate project. [CharacterStudio](https://github.com/axiom-orient/Charact
 ## Install
 
 ```swift
-.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.1.2")
+.package(url: "https://github.com/axiom-orient/CharacterKit.git", from: "2.1.3")
 ```
 
 Add the `ReactiveCharacterKit` library product to your target.
@@ -60,7 +60,12 @@ untrusted JSON. They validate the raw input before decoding.
 
 ```sh
 ./script/verify.sh --ios
+xcrun simctl list devices available
+./script/verify.sh --ios-test SIMULATOR_ID
 ```
+
+`--ios` adds an iOS build to the macOS checks. `--ios-test` also runs the complete
+iOS test suite on the selected simulator.
 
 [Artwork sources](Artwork/PROVENANCE.md) · [Changelog and migration](CHANGELOG.md)
 

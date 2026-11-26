@@ -365,6 +365,13 @@ final class CharacterSceneTests: XCTestCase {
     }
   }
 
+  func testSVGNumberFormattingNormalizesZeroAndPreservesSignedCoordinates() {
+    XCTAssertEqual(CharacterSVGRenderer.number(0), "0.000000")
+    XCTAssertEqual(CharacterSVGRenderer.number(-0.0), "0.000000")
+    XCTAssertEqual(CharacterSVGRenderer.number(-1.25), "-1.250000")
+    XCTAssertEqual(CharacterSVGRenderer.number(0.125), "0.125000")
+  }
+
   func testSVGIsDeterministicEscapedScopedAndContainsNoExternalResources() throws {
     let d = try CharacterDesign.load(.white)
     let s = try scene(d)
