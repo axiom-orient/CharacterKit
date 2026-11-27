@@ -2,6 +2,7 @@
 
 ## 2.1.4
 
+- Give the felt cat a shorter, lower companion brow for asymmetric expressions and fade the brow strokes during side turns.
 - Show the new Norwegian cat expression immediately when an active expression is replaced under Reduce Motion.
 - Keep authored round mascots inside the viewport during large motions while preserving their neutral size.
 

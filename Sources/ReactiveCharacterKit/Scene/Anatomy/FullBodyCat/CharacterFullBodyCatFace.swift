@@ -67,19 +67,24 @@ extension CharacterFullBodyCatDrawing {
       : Self.creamMaterial(center: center, height: anchor.height,
         highlight: Self.cream, shade: Self.eyeShade)
     feature(left ? "eye.left" : "eye.right", shape, fill: material, local: transform)
-    // Small raised creases show curiosity and worry. The neutral mascot stays browless, and
-    // fully round surprise eyes keep their clear silhouette without a second line above them.
-    let crease = Self.unit((brow.lift - 0.29) * 5) * (1 - contour.circular) * frontal * visibility
-    if crease > 0.05 {
+    // Pair a raised crease with a smaller, lower stroke without moving either eye.
+    let oppositeBrow = left ? pose.brows.right : pose.brows.left
+    let oppositeContour = left ? pose.eyeContours.right : pose.eyeContours.left
+    let raised = Self.unit((brow.lift - 0.29) * 5)
+    let paired = Self.unit((oppositeBrow.lift - 0.29) * 5) * (1 - oppositeContour.circular) * 0.68
+    let support = max(0, paired - raised)
+    let crease = (raised + support) * (1 - contour.circular) * frontal * visibility
+    if crease > 0 {
       let half = width * 0.46 * crease
-      let y = center.y - anchor.height * 0.64 - 4
+      let y = center.y - anchor.height * 0.64 - 4 + support * 6
       let slant = sin(brow.angle) * half * 1.8
+      let bend = (2 + max(0, brow.bend)) * Self.unit(crease * 4)
       var path = CharacterVectorPath()
       path.move(center.x - half, y - slant)
-      path.quad(center.x, y - 2.0 - max(0, brow.bend), center.x + half, y + slant)
+      path.quad(center.x, y - bend, center.x + half, y + slant)
       feature(
         left ? "brow.left" : "brow.right", path,
-        stroke: Self.browCream, lineWidth: thickness * crease * 0.92,
+        stroke: Self.browCream, lineWidth: thickness * crease * 0.92, opacity: Self.unit(crease / 0.12),
         local: .around(x: center.x, y: center.y, angle: faceAngle))
     }
   }

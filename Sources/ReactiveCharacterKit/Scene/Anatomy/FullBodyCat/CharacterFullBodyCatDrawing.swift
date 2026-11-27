@@ -121,12 +121,13 @@ struct CharacterFullBodyCatDrawing {
 
   mutating func feature(
     _ id: String, _ path: CharacterVectorPath, fill: CharacterScenePaint? = nil,
-    stroke: CharacterColor? = nil, lineWidth: Double = 0,
+    stroke: CharacterColor? = nil, lineWidth: Double = 0, opacity: Double = 1,
     local: CharacterSceneTransform = .identity
   ) {
     nodes.append(
       .init(
         id: "full-body-cat.\(id)", layer: .features, path: path, fill: fill, stroke: stroke,
-        lineWidth: lineWidth, opacity: featureOpacity, transform: faceTransform.concatenating(local), clips: []))
+        lineWidth: lineWidth, opacity: featureOpacity * opacity,
+        transform: faceTransform.concatenating(local), clips: []))
   }
 }

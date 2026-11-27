@@ -306,6 +306,91 @@ struct CharacterFullBodyCatTests {
     }
   }
 
+  @Test(arguments: [.standing, .waving, .loaf, .upright, .bellyUp, .stretch] as [CharacterFullBodyCatPose])
+  func feltCuriosityKeepsItsAsymmetryWithTwoBrows(_ restingPose: CharacterFullBodyCatPose) throws {
+    let scene = try feltEmotionScene(.interest, restingPose: restingPose)
+    let brows = feltBrows(in: scene)
+    let left = try #require(brows.first { $0.id == "full-body-cat.brow.left" })
+    let right = try #require(brows.first { $0.id == "full-body-cat.brow.right" })
+    let leftEnds = try browEndpoints(left)
+    let rightEnds = try browEndpoints(right)
+    #expect(brows.count == 2)
+    #expect(scene.nodes.filter { $0.id.hasPrefix("full-body-cat.eye.") }.count == 2)
+    #expect(right.lineWidth > 0 && right.lineWidth < left.lineWidth)
+    #expect(right.opacity > 0)
+    #expect(hypot(rightEnds.end.x - rightEnds.start.x, rightEnds.end.y - rightEnds.start.y)
+      < hypot(leftEnds.end.x - leftEnds.start.x, leftEnds.end.y - leftEnds.start.y))
+    if restingPose == .standing {
+      let leftY = (leftEnds.start.y + leftEnds.end.y) / 2
+      let rightY = (rightEnds.start.y + rightEnds.end.y) / 2
+      #expect(rightY > leftY)
+    }
+  }
+
+  @Test(arguments: CharacterFullBodyCatPose.allCases)
+  func feltBrowsStayExpressionAndViewDependent(_ restingPose: CharacterFullBodyCatPose) throws {
+    let neutral = try feltEmotionScene(nil, restingPose: restingPose)
+    let worry = try feltEmotionScene(.anxietyFear, restingPose: restingPose)
+    let eyeCount = worry.nodes.filter { $0.id.hasPrefix("full-body-cat.eye.") }.count
+    #expect(feltBrows(in: neutral).isEmpty)
+    #expect(feltBrows(in: worry).count == (eyeCount == 2 ? 2 : 0))
+    if eyeCount < 2 {
+      let curiosity = try feltEmotionScene(.interest, restingPose: restingPose)
+      #expect(feltBrows(in: curiosity).isEmpty)
+    }
+  }
+
+  @Test(arguments: [CharacterFeltCatTransition.Route.left, .right])
+  func feltBrowsFadeIntoEachSideView(_ route: CharacterFeltCatTransition.Route) throws {
+    let pose = feltExpression(.interest)
+    let appearance = CharacterFullBodyCatAppearance(pose: route.destination, style: .felt)
+    let strengths = try (0...route.intervals).map { key in
+      let transition = CharacterFeltCatTransition(
+        route: route, progress: Double(key) / Double(route.intervals))
+      let motion = CharacterFullBodyCatMotion(pose: transition.endpoint, transition: transition)
+      let scene = try CharacterSceneBuilder.scene(
+        pose: pose, fullBodyCat: appearance, motion: motion, width: 258, height: 258, environment: .init())
+      return feltBrows(in: scene).reduce(0.0) { $0 + $1.lineWidth * $1.opacity }
+    }
+    let starting = try #require(strengths.first)
+    #expect(starting > 0)
+    #expect(strengths.contains { $0 > 0 && $0 < starting / 2 })
+    #expect(strengths.last == 0)
+    #expect(zip(strengths, strengths.dropFirst()).allSatisfy { before, after in after <= before + 1e-9 })
+  }
+
+  private func feltExpression(_ emotion: CharacterEmotion?) -> CharacterPose {
+    let state = ReactiveCharacter.reduce(state: .idle, event: .emotionChanged(emotion)).state
+    return ReactiveCharacter.pose(
+      state: state, elapsed: 0, reduceMotion: true, projection: .flat, motionProfile: .expressive)
+  }
+
+  private func feltEmotionScene(
+    _ emotion: CharacterEmotion?, restingPose: CharacterFullBodyCatPose
+  ) throws -> CharacterScene {
+    try CharacterSceneBuilder.scene(
+      pose: feltExpression(emotion), fullBodyCat: .init(pose: restingPose, style: .felt),
+      width: 258, height: 258, reduceMotion: true)
+  }
+
+  private func feltBrows(in scene: CharacterScene) -> [CharacterSceneNode] {
+    scene.nodes.filter { $0.id.hasPrefix("full-body-cat.brow.") }
+  }
+
+  private func browEndpoints(_ brow: CharacterSceneNode) throws -> (
+    start: CharacterVectorPoint, end: CharacterVectorPoint
+  ) {
+    let start = brow.path.commands.first.flatMap { command -> CharacterVectorPoint? in
+      if case .move(let point) = command { return point }
+      return nil
+    }
+    let end = brow.path.commands.last.flatMap { command -> CharacterVectorPoint? in
+      if case .quad(_, let point) = command { return point }
+      return nil
+    }
+    return (try #require(start), try #require(end))
+  }
+
   @Test(arguments: CharacterFullBodyCatStyle.allCases)
   func smileBlinkAndSpeechKeepTheRaisedPawIndependent(_ style: CharacterFullBodyCatStyle) throws {
     var state = ReactiveCharacter.reduce(state: .idle, event: .emotionChanged(.joy)).state
