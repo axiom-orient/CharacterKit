@@ -33,10 +33,15 @@ struct CharacterGIFPlayback {
 
   mutating func update(
     emotion next: CharacterEmotion?, at time: Double,
-    duration: (CharacterEmotion) -> Double, force: Bool = false
+    duration: (CharacterEmotion) -> Double, reduceMotion: Bool = false, force: Bool = false
   ) {
+    if reduceMotion, handoff != nil {
+      // A static preview must show the incoming emotion even when motion is reduced mid-handoff.
+      handoff = nil
+      startedAt = min(time, startedAt)
+    }
     guard next != emotion || force else { return }
-    let visible = sample(at: time, duration: duration)
+    let visible = reduceMotion ? nil : sample(at: time, duration: duration)
     let current = visible.flatMap { $0.opacity > 0.000_001 ? $0 : nil }
     let returnDuration = current == nil ? 0 : 0.18
     handoff = current.map { Handoff(sample: $0, startedAt: time, duration: returnDuration) }

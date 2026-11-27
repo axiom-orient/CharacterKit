@@ -11,6 +11,43 @@
       ReactiveCharacter.reduce(state: state, event: event).state
     }
 
+    func testReducedMotionShowsReplacedAndReplayedEmotionsImmediately() throws {
+      let gifs = try CharacterGIFSet.norwegianForest.get()
+      let joy = send(.emotionChanged(.joy))
+      let sad = send(.emotionChanged(.sadness), to: joy)
+      var runtime = CharacterGIFPresentation(state: joy, at: 0)
+
+      runtime.update(state: sad, at: 0.6, reduceMotion: true, duration: gifs.duration(for:))
+      let replacement = runtime.sample(at: 0.6, reduceMotion: true, duration: gifs.duration(for:))
+      let clip = try XCTUnwrap(replacement.emotion)
+      XCTAssertEqual(clip.emotion, .sadness)
+      XCTAssertEqual(clip.elapsed, 0)
+      XCTAssertNotNil(try gifs.image(for: clip.emotion, elapsed: clip.elapsed, reduceMotion: true))
+
+      runtime.update(state: sad, at: 0.8, reduceMotion: true, replay: true, duration: gifs.duration(for:))
+      XCTAssertEqual(runtime.sample(at: 0.8, reduceMotion: true, duration: gifs.duration(for:)).emotion?.elapsed, 0)
+      let end = 0.8 + gifs.duration(for: .sadness) + 0.01
+      XCTAssertNil(runtime.sample(at: end, reduceMotion: true, duration: gifs.duration(for:)).emotion)
+
+      runtime.update(state: joy, at: end, reduceMotion: true, duration: gifs.duration(for:))
+      runtime.update(state: .idle, at: end + 0.1, reduceMotion: true, duration: gifs.duration(for:))
+      XCTAssertNil(runtime.sample(at: end + 0.1, reduceMotion: true, duration: gifs.duration(for:)).emotion)
+    }
+
+    func testEnablingReducedMotionCompletesAnInFlightEmotionHandoff() throws {
+      let gifs = try CharacterGIFSet.norwegianForest.get()
+      let joy = send(.emotionChanged(.joy))
+      let sad = send(.emotionChanged(.sadness), to: joy)
+      var runtime = CharacterGIFPresentation(state: joy, at: 0)
+
+      runtime.update(state: sad, at: 0.6, reduceMotion: false, duration: gifs.duration(for:))
+      XCTAssertEqual(runtime.sample(at: 0.65, reduceMotion: false, duration: gifs.duration(for:)).emotion?.emotion, .joy)
+      runtime.update(state: sad, at: 0.65, reduceMotion: true, duration: gifs.duration(for:))
+      XCTAssertEqual(runtime.sample(at: 0.65, reduceMotion: true, duration: gifs.duration(for:)).emotion?.emotion, .sadness)
+      runtime.update(state: sad, at: 0.7, reduceMotion: false, duration: gifs.duration(for:))
+      XCTAssertEqual(runtime.sample(at: 0.7, reduceMotion: false, duration: gifs.duration(for:)).emotion?.emotion, .sadness)
+    }
+
     func testVoiceAndGazeDoNotRestartEmotionAndRemainLiveAfterItEnds() throws {
       let gifs = try CharacterGIFSet.norwegianForest.get()
       var state = send(.emotionChanged(.sadness))

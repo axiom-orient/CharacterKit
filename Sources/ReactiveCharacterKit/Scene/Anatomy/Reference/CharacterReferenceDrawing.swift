@@ -6,16 +6,24 @@ struct CharacterReferenceDrawing {
   private static let rest = ReactiveCharacter.pose(
     state: .idle, elapsed: 0, reduceMotion: true, projection: .flat, motionProfile: .cartoon)
 
+  static func artworkPlacement(for rig: CharacterReferenceRig, in board: CharacterRect)
+    -> (transform: CharacterSceneTransform, bounds: CharacterRect)
+  {
+    let scale = min(board.width / rig.width, board.height / rig.height)
+    let width = rig.width * scale
+    let height = rig.height * scale
+    let bounds = CharacterRect(
+      x: board.midX - width / 2, y: board.midY - height / 2, width: width, height: height)
+    return (.init(a: scale, b: 0, c: 0, d: scale, tx: bounds.x, ty: bounds.y), bounds)
+  }
+
   static func nodes(
     pose: CharacterPose, direction: CharacterArtDirection,
     appearance: CharacterReferenceAppearance, board: CharacterRect,
     transform: CharacterSceneTransform, includeBackground: Bool
   ) -> [CharacterSceneNode] {
     let rig = appearance.rig
-    let scale = min(board.width / rig.width, board.height / rig.height)
-    let placement = CharacterSceneTransform(
-      a: scale, b: 0, c: 0, d: scale,
-      tx: board.midX - rig.width * scale / 2, ty: board.midY - rig.height * scale / 2)
+    let placement = artworkPlacement(for: rig, in: board).transform
     let whole = CharacterRect(x: 0, y: 0, width: rig.width, height: rig.height)
     let base = transform.concatenating(placement)
     var result: [CharacterSceneNode] = []

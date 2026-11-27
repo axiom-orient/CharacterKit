@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.4
+
+- Show the new Norwegian cat expression immediately when an active expression is replaced under Reduce Motion.
+- Keep authored round mascots inside the viewport during large motions while preserving their neutral size.
+
 ## 2.1.3
 
 - Keep SVG zero coordinates in floating-point format to avoid Foundation formatting warnings on iOS.

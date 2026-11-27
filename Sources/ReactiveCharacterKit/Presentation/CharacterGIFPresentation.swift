@@ -31,7 +31,8 @@ struct CharacterGIFPresentation {
       speechTarget = target
       speechChangedAt = time
     }
-    playback.update(emotion: next.emotion, at: time, duration: duration, force: replay)
+    playback.update(emotion: next.emotion, at: time, duration: duration,
+      reduceMotion: reduceMotion, force: replay)
     poseSession.update(state: Self.liveState(next), at: time, reduceMotion: reduceMotion,
       projection: .flat, motionProfile: .companion, transitionProfile: .soft)
   }

@@ -3,6 +3,8 @@ import Foundation
 /// The only owner of validation, surface transform, ordering and Scene publication.
 /// Geometry emitters never construct or publish a Scene.
 enum CharacterSceneCompiler {
+  private static let motionViewportInset = 0.004
+
   static func compile(
     pose: CharacterPose, input: CharacterAppearanceInput, width: Double, height: Double,
     environment: CharacterDesignEnvironment, includeBackground: Bool,
@@ -48,8 +50,18 @@ enum CharacterSceneCompiler {
         width: width, height: height, includeBackground: includeBackground, overlays: overlays)
     case .art(let direction):
       faceBounds = bounds
-      if direction.anatomy == .minimal {
+      switch direction.anatomy {
+      case .minimal:
         transform = fitMinimalArtTransform(transform, board: bounds, width: width, height: height)
+      case .reference(let reference) where transform != .identity:
+        // Keep the registered art on stage during motion without changing its neutral size.
+        let artwork = CharacterReferenceDrawing.artworkPlacement(for: reference.rig, in: bounds).bounds
+        transform = fitArtTransform(
+          transform, envelopeCenter: (artwork.midX, artwork.midY),
+          envelopeSize: (artwork.width, artwork.height), width: width, height: height,
+          margin: min(width, height) * motionViewportInset)
+      default:
+        break
       }
       nodes = CharacterArtDrawing.emit(
         pose: pose, direction: direction, appearance: appearance,
@@ -83,24 +95,32 @@ enum CharacterSceneCompiler {
     let envelopeWidth = envelope.width * board.width
     let envelopeHeight = envelope.height * board.height
     // Layouts without the neutral gutter own their viewport framing.
-    let margin = min(width, height) * 0.004
+    let margin = min(width, height) * motionViewportInset
     guard envelopeWidth <= width - 2 * margin, envelopeHeight <= height - 2 * margin else {
       return transform
     }
 
+    return fitArtTransform(
+      transform, envelopeCenter: (board.x + envelope.midX * board.width, board.y + envelope.midY * board.height),
+      envelopeSize: (envelopeWidth, envelopeHeight),
+      width: width, height: height, margin: margin)
+  }
+
+  private static func fitArtTransform(
+    _ t: CharacterSceneTransform, envelopeCenter: (x: Double, y: Double),
+    envelopeSize: (width: Double, height: Double), width: Double, height: Double,
+    margin: Double
+  ) -> CharacterSceneTransform {
     let centerX = width / 2
     let centerY = height / 2
-    let x = board.x + envelope.midX * board.width
-    let y = board.y + envelope.midY * board.height
-    let t = transform
-    let reachX = abs(t.a * x + t.c * y + t.tx - centerX)
-      + (abs(t.a) * envelopeWidth + abs(t.c) * envelopeHeight) / 2
-    let reachY = abs(t.b * x + t.d * y + t.ty - centerY)
-      + (abs(t.b) * envelopeWidth + abs(t.d) * envelopeHeight) / 2
+    let reachX = abs(t.a * envelopeCenter.x + t.c * envelopeCenter.y + t.tx - centerX)
+      + (abs(t.a) * envelopeSize.width + abs(t.c) * envelopeSize.height) / 2
+    let reachY = abs(t.b * envelopeCenter.x + t.d * envelopeCenter.y + t.ty - centerY)
+      + (abs(t.b) * envelopeSize.width + abs(t.d) * envelopeSize.height) / 2
     let scale = min(1, (centerX - margin) / reachX, (centerY - margin) / reachY)
-    guard scale < 1 else { return transform }
+    guard scale < 1 else { return t }
     let fit = CharacterSceneTransform.around(x: centerX, y: centerY, scaleX: scale, scaleY: scale)
-    return fit.concatenating(transform)
+    return fit.concatenating(t)
   }
 
   static func validate(pose: CharacterPose, overlays: [CharacterAccentPose]) throws {
