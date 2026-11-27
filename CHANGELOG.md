@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.5
+
+- Keep the felt cat’s torso and tail steady while its paws step, without changing the crayon gait.
+- Stabilize live felt and crayon cat rendering on iOS 27.2 and later to prevent intermittent Canvas displacement during walking.
+
 ## 2.1.4
 
 - Give the felt cat a shorter, lower companion brow for asymmetric expressions and fade the brow strokes during side turns.

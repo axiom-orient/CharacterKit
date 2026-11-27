@@ -397,30 +397,17 @@ struct CharacterFullBodyCatMotion: Equatable, Sendable {
       return
     }
 
-    // Weight arrives after the pad makes contact. A short compression is
-    // followed by a slower lift, with the rear and front sharing the load.
+    // Blend out most idle breathing while the paws carry the gait, so the wool
+    // silhouette and tail do not compress and rebound on every footfall.
+    breath *= 1 - 0.75 * strength
     let direction: Double = pose == .left ? -1 : 1
     walkTravel = 9.8
     walkLift = 9.5
     farStrideScale = 0.72
     hasFeltFootfall = true
-    func pulse(after beat: Double, delay: Double, peak: Double, release: Double) -> Double {
-      let time = cycle - beat - Self.feltSwing - delay
-      let phase = time - floor(time)
-      return Self.smooth(phase / peak) * (1 - Self.smooth((phase - peak) / release))
-    }
-    let hindLoad = pulse(after: 0.50, delay: 0.01, peak: 0.060, release: 0.19)
-      + 0.48 * pulse(after: 0, delay: 0.01, peak: 0.060, release: 0.19)
-    let frontLoad = pulse(after: 0.75, delay: 0.01, peak: 0.070, release: 0.17)
-      + 0.48 * pulse(after: 0.25, delay: 0.01, peak: 0.070, release: 0.17)
-    let load = min(1, 0.88 * hindLoad + 0.96 * frontLoad)
-    let rise = pulse(after: 0.50, delay: 0.16, peak: 0.14, release: 0.14)
-      + 0.52 * pulse(after: 0, delay: 0.16, peak: 0.14, release: 0.14)
-    breath += strength * (-0.077 * load + 0.031 * rise)
-    bodyWidth += strength * (0.060 * load - 0.019 * rise)
-    walkWeightShift = 2.65 * strength * Self.wave(cycle - 0.14, period: 0.5)
+    walkWeightShift = 1.15 * strength * Self.wave(cycle - 0.14, period: 0.5)
     bodyOffsetX = walkWeightShift * direction / CharacterFullBodyCatArtwork.size
-    headAngle = direction * strength * (0.020 * frontLoad - 0.018 * hindLoad)
+    headAngle = direction * strength * 0.009 * Self.wave(cycle - 0.28, period: 0.5)
   }
 
   private mutating func applyConnectedHop(route: CharacterFeltCatTransition.Route, elapsed: Double) {

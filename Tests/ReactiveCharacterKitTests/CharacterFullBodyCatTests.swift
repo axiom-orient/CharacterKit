@@ -110,6 +110,28 @@ struct CharacterFullBodyCatTests {
     #expect(firstLegs.allSatisfy { ($0.image != nil) == (style == .felt) })
   }
 
+  @Test(arguments: CharacterFullBodyCatWalkDirection.allCases)
+  func feltWalkingKeepsTheTorsoStableWhileEachPawSteps(
+    _ direction: CharacterFullBodyCatWalkDirection
+  ) throws {
+    let cue = CharacterFullBodyCatAppearance(action: .walk, style: .felt, walkDirection: direction)
+    let duration = try #require(cue.actionDuration)
+    let gait = stride(from: 0.0, to: duration, by: 1.0 / 120).map { time in
+      CharacterFullBodyCatMotion.sample(
+        appearance: cue, elapsed: time + 0.47, actionElapsed: time, reduceMotion: false)
+    }.filter { $0.walkPhase != nil && $0.walkStrength > 0 }
+    try #require(!gait.isEmpty)
+
+    #expect(gait.allSatisfy { $0.bodyWidth == 0 && $0.bodyOffsetY == 0 })
+    #expect(gait.allSatisfy { abs($0.breath) <= 0.011 + 1e-9 })
+    #expect(gait.allSatisfy { abs($0.bodyOffsetX) * CharacterFullBodyCatArtwork.size <= 1.15 + 1e-9 })
+    for leg in CharacterFullBodyCatLeg.allCases {
+      let lifts = gait.map { $0.step(for: leg).lift }
+      #expect(lifts.contains(0), "\(leg) never plants")
+      #expect(lifts.contains { $0 > 1 }, "\(leg) never swings clear")
+    }
+  }
+
   @Test
   func hopAnticipatesTucksAndReturnsToTheSelectedPose() throws {
     let cue = CharacterFullBodyCatAppearance(pose: .left, action: .hop)

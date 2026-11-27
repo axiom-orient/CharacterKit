@@ -23,7 +23,19 @@
           }
           switch result {
           case .success(let scene):
-            CharacterSceneCanvas(scene: scene)
+            Group {
+              let canvas = CharacterSceneCanvas(scene: scene)
+              #if os(iOS)
+                if #available(iOS 27.2, *) {
+                  // Keep the live Canvas in a fixed compositing group as the silhouette changes.
+                  canvas.drawingGroup(opaque: false, colorMode: .nonLinear)
+                } else {
+                  canvas
+                }
+              #else
+                canvas
+              #endif
+            }
               .accessibilityValue(Text(CharacterSceneCanvasRenderer.missingImageAccessibilityValue(in: scene)))
           case .failure(let error):
             Text("Character rendering failed: \(String(describing: error))")
